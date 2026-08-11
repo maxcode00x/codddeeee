@@ -17,6 +17,27 @@ locally (e.g. `python3 -m http.server`) to avoid `file://` quirks. All
 persistence (sandbox layout, code, completed-tutorial tracking) uses
 `localStorage` — there is no server-side state.
 
+## Windows launcher (`icon.ico`, `launch.vbs`, `create-shortcut.vbs`)
+
+These three files let a Windows user run `index.html` as an app-like window
+(no address bar, own taskbar icon) using their already-installed Chrome or
+Edge in `--app` mode — no hosting, no build step, no install. `launch.vbs`
+probes the standard Chrome/Edge install paths (Program Files, Program Files
+(x86), and the per-user `%LocalAppData%` install location) and shell-runs
+whichever it finds with `--app="file:///.../index.html"`; `create-shortcut.vbs`
+is a one-time installer the user double-clicks to drop a desktop shortcut
+(targeting `wscript.exe launch.vbs`, icon set to `icon.ico`). Both `.vbs`
+files are saved as UTF-16LE with a BOM (not UTF-8) because they contain
+Cyrillic strings and Windows Script Host's encoding auto-detection is
+locale-dependent for plain ANSI — UTF-16LE+BOM renders correctly regardless
+of the system codepage. `icon.ico` is a hand-assembled multi-resolution
+container (256/48/32/16px PNG-in-ICO entries, no external tools) generated
+by rendering a canvas in headless Chromium and packing the PNGs with a small
+Node script — see git history for the generator if the icon ever needs
+regenerating. None of this has been tested on a real Windows machine (the
+dev sandbox is Linux-only); treat reported issues from actual use as
+authoritative over the code's apparent correctness.
+
 ## Two modes
 
 The app has two top-level modes, toggled by the header tabs and tracked in
