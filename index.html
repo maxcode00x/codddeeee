@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПЛК-тренажёр — шлагбаум и конвейер</title>
+<style>
+  :root {
+    --bg: #12161c;
+    --panel: #1a2029;
+    --panel2: #212936;
+    --border: #2c3644;
+    --text: #e4e8ee;
+    --muted: #8a94a6;
+    --accent: #4fd1c5;
+    --accent2: #f0b429;
+    --danger: #ef5757;
+    --ok: #4caf50;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 12px;
+    background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header span { color: var(--muted); font-size: 13px; }
+  .layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .panel h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 0 0 4px 0; font-weight: 600;
+  }
+  canvas {
+    width: 100%; height: 280px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+  }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  button {
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 14px; cursor: pointer;
+    background: var(--panel2); color: var(--text);
+    transition: background .15s;
+  }
+  button:hover { background: #2a3342; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: #052; border-color: var(--accent); }
+  button.primary:hover { background: #5fe0d3; }
+  button.stop { background: var(--danger); color: #fff; border-color: var(--danger); }
+  button.stop:hover { background: #ff6b6b; }
+  #btnStart, #btnStop {
+    width: 64px; height: 64px; border-radius: 50%;
+    font-size: 12px; user-select: none;
+  }
+  #btnStart { background: #1c4d34; color: #7ee89a; border-color: #2e6b48; }
+  #btnStart:active, #btnStart.pressed { background: var(--ok); color: #06280f; }
+  #btnStop { background: #4d1c1c; color: #ff9d9d; border-color: #6b2e2e; }
+  #btnStop:active, #btnStop.pressed { background: var(--danger); color: #2a0505; }
+  select {
+    font-family: inherit; font-size: 13px; background: var(--panel2);
+    color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 8px;
+  }
+  textarea {
+    width: 100%; flex: 1; min-height: 260px;
+    font-family: var(--mono); font-size: 13px; line-height: 1.5;
+    background: #0d1117; color: #d8e0ea;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; resize: vertical;
+    tab-size: 2;
+  }
+  #errorBox {
+    display: none;
+    background: #3a1414; border: 1px solid var(--danger);
+    color: #ffb3b3; padding: 8px 12px; border-radius: 6px;
+    font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap;
+  }
+  #errorBox.show { display: block; }
+  .watch {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .watch .row {
+    display: flex; justify-content: space-between; gap: 6px;
+    background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 8px;
+  }
+  .watch .row .val.on { color: var(--ok); font-weight: 700; }
+  .watch .row .val.off { color: var(--muted); }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge.running { border-color: var(--ok); color: var(--ok); }
+  .cheatsheet {
+    font-size: 12.5px; color: var(--muted); line-height: 1.6;
+    background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .cheatsheet code {
+    background: #0d1117; color: var(--accent);
+    padding: 1px 5px; border-radius: 4px; font-family: var(--mono);
+  }
+  .row-flex { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ПЛК-тренажёр</h1>
+  <span>Учебная линия: датчик → ворота → конвейер. Пиши логику на упрощённом ST (Structured Text) и сразу смотри, как реагирует оборудование.</span>
+</header>
+
+<div class="layout">
+
+  <div class="panel">
+    <div class="row-flex">
+      <h2>Схема линии</h2>
+      <span class="badge" id="scanBadge">сканирование остановлено</span>
+    </div>
+    <canvas id="scene" width="640" height="280"></canvas>
+
+    <div class="controls">
+      <button id="btnStart">ПУСК</button>
+      <button id="btnStop">СТОП</button>
+      <div style="flex:1"></div>
+      <label style="font-size:12px; color:var(--muted);">Такт сканирования:
+        <select id="scanRate">
+          <option value="500">500 мс (медленно, видно шаг)</option>
+          <option value="200" selected>200 мс</option>
+          <option value="100">100 мс</option>
+          <option value="50">50 мс (быстро)</option>
+        </select>
+      </label>
+    </div>
+
+    <h2>Наблюдение за переменными (Watch)</h2>
+    <div class="watch" id="watch"></div>
+
+    <div class="cheatsheet">
+      <b>Что на линии:</b> деталь едет по конвейеру (<code>Motor1</code>), доезжает до датчика (<code>Sensor1</code> = вход, ставится автоматически, когда деталь физически стоит перед воротами) и ждёт у ворот (<code>Gate1Open</code> = выход). Кнопки <code>ButtonStart</code>/<code>ButtonStop</code> — обычные кнопки без фиксации, срабатывают только пока зажаты (как в реальном щите) — самоподхват нужно делать в коде. <code>Lamp1</code> — сигнальная лампа, назначение придумай сам.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row-flex">
+      <h2>Программа (упрощённый Structured Text)</h2>
+    </div>
+    <textarea id="code" spellcheck="false"></textarea>
+    <div id="errorBox"></div>
+    <div class="controls">
+      <button class="primary" id="btnRun">▶ Компилировать и запустить</button>
+      <button id="btnReset">Сброс сцены</button>
+    </div>
+    <div class="cheatsheet">
+      <b>Синтаксис:</b><br>
+      Присваивание: <code>Переменная := выражение;</code><br>
+      Логика: <code>AND</code>, <code>OR</code>, <code>NOT</code>, скобки, <code>TRUE</code>/<code>FALSE</code><br>
+      Условие: <code>IF выражение THEN ... ELSE ... END_IF;</code><br>
+      Таймер на включение: <code>Var := TON(ИмяТаймера, условие, миллисекунды);</code><br>
+      Комментарии: <code>// строка</code> или <code>(* блок *)</code><br>
+      Любое новое имя переменной — просто внутренняя ячейка памяти (для флагов, латчей и т.п.), объявлять не нужно.
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ======================= ИНТЕРПРЕТАТОР УПРОЩЁННОГО ST ======================= */
+
+function stripComments(src) {
+  return src.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/\/\/.*$/gm, '');
+}
+
+const KEYWORDS = new Set(['IF','THEN','ELSE','END_IF','AND','OR','NOT','TRUE','FALSE']);
+
+function lex(src) {
+  src = stripComments(src);
+  const tokens = [];
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === ':' && src[i+1] === '=') { tokens.push({t:'ASSIGN'}); i+=2; continue; }
+    if (c === ';') { tokens.push({t:'SEMI'}); i++; continue; }
+    if (c === '(') { tokens.push({t:'LPAREN'}); i++; continue; }
+    if (c === ')') { tokens.push({t:'RPAREN'}); i++; continue; }
+    if (c === ',') { tokens.push({t:'COMMA'}); i++; continue; }
+    if (/[0-9]/.test(c)) {
+      let j = i;
+      while (j < n && /[0-9]/.test(src[j])) j++;
+      tokens.push({t:'NUMBER', v: parseInt(src.slice(i,j),10)});
+      i = j; continue;
+    }
+    if (/[A-Za-z_]/.test(c)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_]/.test(src[j])) j++;
+      const word = src.slice(i,j);
+      const upper = word.toUpperCase();
+      if (KEYWORDS.has(upper)) tokens.push({t: upper});
+      else tokens.push({t:'IDENT', v: word});
+      i = j; continue;
+    }
+    throw new Error(`Неизвестный символ '${c}' в позиции ${i}`);
+  }
+  tokens.push({t:'EOF'});
+  return tokens;
+}
+
+class Parser {
+  constructor(tokens) { this.tokens = tokens; this.pos = 0; }
+  peek() { return this.tokens[this.pos]; }
+  next() { return this.tokens[this.pos++]; }
+  expect(type) {
+    const tok = this.next();
+    if (tok.t !== type) throw new Error(`Ожидался ${type}, но найден ${tok.t}`);
+    return tok;
+  }
+  parseProgram() {
+    const stmts = [];
+    while (this.peek().t !== 'EOF') stmts.push(this.parseStatement());
+    return stmts;
+  }
+  parseStatements(stopTokens) {
+    const stmts = [];
+    while (!stopTokens.includes(this.peek().t)) {
+      if (this.peek().t === 'EOF') throw new Error('Незакрытый блок IF — не хватает END_IF');
+      stmts.push(this.parseStatement());
+    }
+    return stmts;
+  }
+  parseStatement() {
+    if (this.peek().t === 'IF') return this.parseIf();
+    if (this.peek().t === 'IDENT') return this.parseAssign();
+    throw new Error(`Неожиданный токен: ${this.peek().t}`);
+  }
+  parseAssign() {
+    const name = this.expect('IDENT').v;
+    this.expect('ASSIGN');
+    const expr = this.parseExpr();
+    this.expect('SEMI');
+    return {type:'assign', name, expr};
+  }
+  parseIf() {
+    this.expect('IF');
+    const cond = this.parseExpr();
+    this.expect('THEN');
+    const thenStmts = this.parseStatements(['ELSE','END_IF']);
+    let elseStmts = [];
+    if (this.peek().t === 'ELSE') {
+      this.next();
+      elseStmts = this.parseStatements(['END_IF']);
+    }
+    this.expect('END_IF');
+    if (this.peek().t === 'SEMI') this.next();
+    return {type:'if', cond, then: thenStmts, else: elseStmts};
+  }
+  parseExpr() { return this.parseOr(); }
+  parseOr() {
+    let left = this.parseAnd();
+    while (this.peek().t === 'OR') { this.next(); left = {type:'bin', op:'OR', left, right: this.parseAnd()}; }
+    return left;
+  }
+  parseAnd() {
+    let left = this.parseNot();
+    while (this.peek().t === 'AND') { this.next(); left = {type:'bin', op:'AND', left, right: this.parseNot()}; }
+    return left;
+  }
+  parseNot() {
+    if (this.peek().t === 'NOT') { this.next(); return {type:'not', expr: this.parseNot()}; }
+    return this.parsePrimary();
+  }
+  parsePrimary() {
+    const tok = this.peek();
+    if (tok.t === 'TRUE') { this.next(); return {type:'lit', value:true}; }
+    if (tok.t === 'FALSE') { this.next(); return {type:'lit', value:false}; }
+    if (tok.t === 'NUMBER') { this.next(); return {type:'num', value: tok.v}; }
+    if (tok.t === 'LPAREN') { this.next(); const e = this.parseExpr(); this.expect('RPAREN'); return e; }
+    if (tok.t === 'IDENT') {
+      this.next();
+      if (this.peek().t === 'LPAREN') {
+        this.next();
+        const isTimer = tok.v.toUpperCase() === 'TON';
+        const args = [];
+        if (this.peek().t !== 'RPAREN') {
+          args.push(isTimer ? this.parseTimerNameArg() : this.parseExpr());
+          while (this.peek().t === 'COMMA') { this.next(); args.push(this.parseExpr()); }
+        }
+        this.expect('RPAREN');
+        return {type:'call', name: tok.v, args};
+      }
+      return {type:'var', name: tok.v};
+    }
+    throw new Error(`Неожиданный токен в выражении: ${tok.t}`);
+  }
+  parseTimerNameArg() {
+    const name = this.expect('IDENT').v;
+    return {type:'name', value: name};
+  }
+}
+
+function evalExpr(node, scope, timers, now) {
+  switch (node.type) {
+    case 'lit': return node.value;
+    case 'num': return node.value;
+    case 'var': return !!scope[node.name];
+    case 'not': return !evalExpr(node.expr, scope, timers, now);
+    case 'bin': {
+      const l = evalExpr(node.left, scope, timers, now);
+      if (node.op === 'AND') return l && evalExpr(node.right, scope, timers, now);
+      if (node.op === 'OR') return l || evalExpr(node.right, scope, timers, now);
+      throw new Error('Неизвестный оператор ' + node.op);
+    }
+    case 'call': {
+      if (node.name.toUpperCase() === 'TON') {
+        if (node.args.length !== 3) throw new Error('TON требует 3 аргумента: TON(Имя, условие, миллисекунды)');
+        const timerId = node.args[0].value;
+        const input = evalExpr(node.args[1], scope, timers, now);
+        const preset = evalExpr(node.args[2], scope, timers, now);
+        let timer = timers[timerId];
+        if (!timer) timer = timers[timerId] = {running:false, start:0};
+        if (input) {
+          if (!timer.running) { timer.running = true; timer.start = now; }
+          return (now - timer.start) >= preset;
+        }
+        timer.running = false;
+        return false;
+      }
+      throw new Error('Неизвестная функция ' + node.name);
+    }
+    default: throw new Error('Неизвестный узел ' + node.type);
+  }
+}
+
+function execStmts(stmts, scope, timers, now) {
+  for (const s of stmts) {
+    if (s.type === 'assign') scope[s.name] = evalExpr(s.expr, scope, timers, now);
+    else if (s.type === 'if') execStmts(evalExpr(s.cond, scope, timers, now) ? s.then : s.else, scope, timers, now);
+  }
+}
+
+function compile(src) {
+  return new Parser(lex(src)).parseProgram();
+}
+
+/* ======================= СОСТОЯНИЕ ЛИНИИ (I/O) ======================= */
+
+const IO = {
+  // входы (только для чтения из программы, меняются физикой сцены / кнопками)
+  ButtonStart: false,
+  ButtonStop: false,
+  Sensor1: false,
+  // выходы (пишет программа пользователя)
+  Gate1Open: false,
+  Motor1: false,
+  Lamp1: false,
+};
+
+let timers = {};
+let ast = null;
+let scanTimerHandle = null;
+
+const LANE_Y = 170;
+const LANE_X0 = 40;
+const GATE_X = 520;
+const SENSOR_ZONE_START = GATE_X - 60;
+const BOX_W = 26;
+
+const world = {
+  boxX: LANE_X0,
+  gateAngle: 90, // 0 = открыто (вертикально), 90 = закрыто (горизонтально перекрывает полосу)
+  lampBlink: 0,
+};
+
+/* ======================= UI: ВЫВОД ОШИБОК ======================= */
+
+const errorBox = document.getElementById('errorBox');
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add('show');
+}
+function clearError() {
+  errorBox.classList.remove('show');
+  errorBox.textContent = '';
+}
+
+/* ======================= WATCH-ТАБЛИЦА ======================= */
+
+const watchEl = document.getElementById('watch');
+function renderWatch() {
+  const rows = Object.keys(IO).map(k => {
+    const v = IO[k];
+    return `<div class="row"><span>${k}</span><span class="val ${v ? 'on' : 'off'}">${v ? 'TRUE' : 'FALSE'}</span></div>`;
+  });
+  watchEl.innerHTML = rows.join('');
+}
+
+/* ======================= ЦИКЛ СКАНИРОВАНИЯ (ЛОГИКА ПЛК) ======================= */
+
+const scanBadge = document.getElementById('scanBadge');
+
+function runScan() {
+  if (!ast) return;
+  try {
+    execStmts(ast, IO, timers, performance.now());
+    clearError();
+  } catch (e) {
+    showError('Ошибка выполнения: ' + e.message);
+    stopScan();
+  }
+  renderWatch();
+}
+
+function startScan() {
+  stopScan();
+  const rate = parseInt(document.getElementById('scanRate').value, 10);
+  scanTimerHandle = setInterval(runScan, rate);
+  scanBadge.textContent = 'сканирование: ' + rate + ' мс';
+  scanBadge.classList.add('running');
+}
+
+function stopScan() {
+  if (scanTimerHandle) clearInterval(scanTimerHandle);
+  scanTimerHandle = null;
+  scanBadge.textContent = 'сканирование остановлено';
+  scanBadge.classList.remove('running');
+}
+
+document.getElementById('scanRate').addEventListener('change', () => {
+  if (scanTimerHandle) startScan();
+});
+
+/* ======================= КОМПИЛЯЦИЯ / ЗАПУСК ======================= */
+
+const codeEl = document.getElementById('code');
+
+codeEl.value = `// --- Пуск/Стоп с самоподхватом (классика ПЛК) ---
+// Кнопки нажимаются кратковременно, поэтому без самоподхвата
+// конвейер работал бы только пока держишь ПУСК.
+Motor1 := (ButtonStart OR Motor1) AND NOT ButtonStop;
+
+// Ворота открываются, когда деталь встала перед датчиком
+Gate1Open := Sensor1;
+
+// Лампа сигналит, что деталь ждёт закрытых ворот
+Lamp1 := Sensor1 AND NOT Gate1Open;
+
+// --- Задания для тренировки (раскомментируй и попробуй) ---
+// 1) Сделай так, чтобы ворота открывались через 1.5 сек после
+//    остановки детали у датчика (а не мгновенно):
+// Gate1Open := TON(GateDelay, Sensor1, 1500);
+//
+// 2) Добавь аварию: если деталь стоит у датчика больше 5 сек
+//    и ворота так и не открылись — мигай лампой и глуши мотор.
+`;
+
+function doCompileAndRun() {
+  try {
+    ast = compile(codeEl.value);
+    clearError();
+    timers = {};
+    startScan();
+  } catch (e) {
+    ast = null;
+    stopScan();
+    showError('Ошибка компиляции: ' + e.message);
+  }
+}
+
+document.getElementById('btnRun').addEventListener('click', doCompileAndRun);
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  world.boxX = LANE_X0;
+  world.gateAngle = 90;
+  IO.Sensor1 = false;
+  IO.Gate1Open = false;
+  IO.Motor1 = false;
+  IO.Lamp1 = false;
+  timers = {};
+});
+
+/* ======================= КНОПКИ ПУСК / СТОП (физические, без фиксации) ======================= */
+
+function wireMomentaryButton(el, ioKey) {
+  const press = (e) => { e.preventDefault(); IO[ioKey] = true; el.classList.add('pressed'); };
+  const release = (e) => { IO[ioKey] = false; el.classList.remove('pressed'); };
+  el.addEventListener('mousedown', press);
+  el.addEventListener('touchstart', press);
+  el.addEventListener('mouseup', release);
+  el.addEventListener('mouseleave', release);
+  el.addEventListener('touchend', release);
+}
+wireMomentaryButton(document.getElementById('btnStart'), 'ButtonStart');
+wireMomentaryButton(document.getElementById('btnStop'), 'ButtonStop');
+
+/* ======================= ФИЗИКА СЦЕНЫ (не логика ПЛК — это "реальный мир") ======================= */
+
+const SPEED = 55; // px/sec
+let lastFrame = null;
+
+function stepPhysics(dt) {
+  const inZone = world.boxX + BOX_W >= SENSOR_ZONE_START && world.boxX <= GATE_X;
+  IO.Sensor1 = inZone;
+
+  const blockedByGate = (world.boxX + BOX_W >= GATE_X - 4) && !IO.Gate1Open;
+  const canMove = IO.Motor1 && !blockedByGate;
+
+  if (canMove) {
+    world.boxX += SPEED * dt;
+  }
+  if (world.boxX > 640 + BOX_W) {
+    world.boxX = LANE_X0; // деталь ушла с линии — новая заходит с начала
+  }
+  if (!IO.Gate1Open) {
+    // не даём детали проехать сквозь закрытые ворота
+    world.boxX = Math.min(world.boxX, GATE_X - BOX_W - 2);
+  }
+
+  const targetAngle = IO.Gate1Open ? 0 : 90;
+  world.gateAngle += (targetAngle - world.gateAngle) * Math.min(1, dt * 6);
+
+  world.lampBlink += dt;
+}
+
+/* ======================= ОТРИСОВКА СЦЕНЫ ======================= */
+
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+
+function draw() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // фон
+  ctx.fillStyle = '#212936';
+  ctx.fillRect(0, 0, w, h);
+
+  // конвейер (полоса)
+  ctx.fillStyle = '#161c24';
+  ctx.fillRect(LANE_X0 - 10, LANE_Y - 22, GATE_X - LANE_X0 + 30, 44);
+  ctx.strokeStyle = '#39465a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(LANE_X0 - 10, LANE_Y - 22, GATE_X - LANE_X0 + 30, 44);
+
+  // "зубцы" конвейера, едущие если Motor1 включен
+  ctx.strokeStyle = '#2c3644';
+  ctx.lineWidth = 1;
+  const tick = IO.Motor1 ? (performance.now() / 40) % 20 : 0;
+  for (let x = LANE_X0 - 10 - tick; x < GATE_X + 20; x += 20) {
+    ctx.beginPath();
+    ctx.moveTo(x, LANE_Y - 22);
+    ctx.lineTo(x, LANE_Y + 22);
+    ctx.stroke();
+  }
+
+  // зона датчика
+  ctx.fillStyle = IO.Sensor1 ? 'rgba(79,209,197,0.25)' : 'rgba(79,209,197,0.08)';
+  ctx.fillRect(SENSOR_ZONE_START, LANE_Y - 30, GATE_X - SENSOR_ZONE_START, 60);
+  ctx.strokeStyle = '#4fd1c5';
+  ctx.setLineDash([4, 3]);
+  ctx.strokeRect(SENSOR_ZONE_START, LANE_Y - 30, GATE_X - SENSOR_ZONE_START, 60);
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#8a94a6';
+  ctx.font = '11px monospace';
+  ctx.fillText('Sensor1', SENSOR_ZONE_START + 4, LANE_Y - 36);
+
+  // деталь (коробка) на конвейере
+  ctx.fillStyle = '#f0b429';
+  ctx.fillRect(world.boxX, LANE_Y - 12, BOX_W, 24);
+  ctx.strokeStyle = '#8a5a00';
+  ctx.strokeRect(world.boxX, LANE_Y - 12, BOX_W, 24);
+
+  // ворота (шлагбаум), пивот над концом полосы
+  const pivotX = GATE_X, pivotY = LANE_Y - 24;
+  const armLen = 70;
+  const rad = world.gateAngle * Math.PI / 180;
+  const armX = pivotX + Math.sin(rad) * armLen;
+  const armY = pivotY - Math.cos(rad) * armLen;
+
+  ctx.fillStyle = '#3a4556';
+  ctx.beginPath();
+  ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = IO.Gate1Open ? '#4caf50' : '#ef5757';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY);
+  ctx.lineTo(armX, armY);
+  ctx.stroke();
+
+  // красно-белая раскраска стрелы
+  ctx.lineWidth = 6;
+  ctx.setLineDash([9, 9]);
+  ctx.strokeStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY);
+  ctx.lineTo(armX, armY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#8a94a6';
+  ctx.fillText('Gate1', pivotX - 16, pivotY - 12);
+
+  // сигнальная лампа
+  const lampOn = IO.Lamp1 && (Math.floor(world.lampBlink * 3) % 2 === 0 || !IO.Lamp1);
+  ctx.beginPath();
+  ctx.arc(590, 40, 12, 0, Math.PI * 2);
+  ctx.fillStyle = IO.Lamp1 ? (Math.floor(world.lampBlink * 3) % 2 === 0 ? '#ffcc33' : '#5a4a1a') : '#3a4556';
+  ctx.fill();
+  ctx.strokeStyle = '#1a2029';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#8a94a6';
+  ctx.font = '11px monospace';
+  ctx.fillText('Lamp1', 568, 66);
+
+  // подпись мотора/конвейера
+  ctx.fillStyle = IO.Motor1 ? '#4caf50' : '#8a94a6';
+  ctx.beginPath();
+  ctx.arc(LANE_X0 - 10, LANE_Y, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8a94a6';
+  ctx.fillText('Motor1', LANE_X0 - 34, LANE_Y + 28);
+}
+
+function frame(ts) {
+  if (lastFrame == null) lastFrame = ts;
+  const dt = Math.min(0.1, (ts - lastFrame) / 1000);
+  lastFrame = ts;
+  stepPhysics(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+/* ======================= СТАРТ ======================= */
+
+// подгоняем внутреннее разрешение canvas под фактический размер на экране
+function fitCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(640, Math.round(rect.width));
+  canvas.height = 280;
+}
+window.addEventListener('resize', fitCanvas);
+fitCanvas();
+
+renderWatch();
+requestAnimationFrame(frame);
+doCompileAndRun();
+</script>
+</body>
+</html>
