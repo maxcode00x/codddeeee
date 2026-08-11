@@ -174,10 +174,12 @@
   .palette button .emoji { font-size: 18px; }
 
   /* task list (tutorial) */
-  .tasklist { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tasklist { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .tasklist button { min-width: 34px; }
   .tasklist button.done { border-color: var(--ok); }
   .tasklist button.done::after { content: ' ✓'; color: var(--ok); }
+  .level-header { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 6px 0 4px; }
+  .level-header:first-child { margin-top: 0; }
   .task-desc { font-size: 13px; line-height: 1.55; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   .task-desc b { color: var(--accent); }
 
@@ -215,7 +217,7 @@
     <!-- ==== TUTORIAL SIDE PANEL ==== -->
     <div id="tutorialPanel">
       <h2>Задания</h2>
-      <div class="tasklist" id="taskList"></div>
+      <div id="taskList"></div>
       <div class="task-desc" id="taskDesc"></div>
     </div>
 
@@ -228,6 +230,7 @@
       <div class="palette" id="palette"></div>
       <div class="controls">
         <button id="btnEditMode">✏️ Режим правки: выкл</button>
+        <button id="btnRotateSelected" disabled>⟳ Повернуть</button>
         <button id="btnDeleteSelected" disabled>🗑 Удалить выбранный</button>
         <button id="btnClearAll" class="ghost">Очистить сцену</button>
       </div>
@@ -287,7 +290,8 @@
       Присваивание: <code>Тег := выражение;</code> &nbsp;
       Логика: <code>AND</code> <code>OR</code> <code>NOT</code> <code>( )</code> <code>TRUE</code>/<code>FALSE</code><br>
       Условие: <code>IF выражение THEN ... ELSE ... END_IF;</code><br>
-      Таймер: <code>Var := TON(ИмяТаймера, условие, миллисекунды);</code><br>
+      Таймер (вкл. с задержкой): <code>Var := TON(Имя, условие, миллисекунды);</code><br>
+      Счётчик (нарастающие фронты): <code>Var := CTU(Имя, условие, число);</code><br>
       Комментарии: <code>// строка</code> или <code>(* блок *)</code><br>
       Имена тегов смотри в таблице «Теги (I/O)» слева — они появляются автоматически, когда на линии есть прибор.
       Любое незнакомое имя — просто внутренняя переменная-память (для флагов, латчей и т.п.).
@@ -419,10 +423,10 @@ class Parser {
       this.next();
       if (this.peek().t === 'LPAREN') {
         this.next();
-        const isTimer = tok.v.toUpperCase() === 'TON';
+        const isNamedBlock = NAMED_BLOCKS.has(tok.v.toUpperCase());
         const args = [];
         if (this.peek().t !== 'RPAREN') {
-          args.push(isTimer ? this.parseTimerNameArg() : this.parseExpr());
+          args.push(isNamedBlock ? this.parseBlockNameArg() : this.parseExpr());
           while (this.peek().t === 'COMMA') { this.next(); args.push(this.parseExpr()); }
         }
         this.expect('RPAREN');
@@ -432,30 +436,35 @@ class Parser {
     }
     throw new Error(`Неожиданный токен в выражении: ${tok.t}`);
   }
-  parseTimerNameArg() {
+  parseBlockNameArg() {
     const name = this.expect('IDENT').v;
     return {type:'name', value: name};
   }
 }
 
-function evalExpr(node, scope, timers, now) {
+// TON и CTU — единственные функции языка, их первый аргумент — голое имя
+// (идентификатор таймера/счётчика), а не переменная/выражение
+const NAMED_BLOCKS = new Set(['TON', 'CTU']);
+
+function evalExpr(node, scope, timers, counters, now) {
   switch (node.type) {
     case 'lit': return node.value;
     case 'num': return node.value;
     case 'var': return !!scope[node.name];
-    case 'not': return !evalExpr(node.expr, scope, timers, now);
+    case 'not': return !evalExpr(node.expr, scope, timers, counters, now);
     case 'bin': {
-      const l = evalExpr(node.left, scope, timers, now);
-      if (node.op === 'AND') return l && evalExpr(node.right, scope, timers, now);
-      if (node.op === 'OR') return l || evalExpr(node.right, scope, timers, now);
+      const l = evalExpr(node.left, scope, timers, counters, now);
+      if (node.op === 'AND') return l && evalExpr(node.right, scope, timers, counters, now);
+      if (node.op === 'OR') return l || evalExpr(node.right, scope, timers, counters, now);
       throw new Error('Неизвестный оператор ' + node.op);
     }
     case 'call': {
-      if (node.name.toUpperCase() === 'TON') {
+      const fn = node.name.toUpperCase();
+      if (fn === 'TON') {
         if (node.args.length !== 3) throw new Error('TON требует 3 аргумента: TON(Имя, условие, миллисекунды)');
         const timerId = node.args[0].value;
-        const input = evalExpr(node.args[1], scope, timers, now);
-        const preset = evalExpr(node.args[2], scope, timers, now);
+        const input = evalExpr(node.args[1], scope, timers, counters, now);
+        const preset = evalExpr(node.args[2], scope, timers, counters, now);
         let timer = timers[timerId];
         if (!timer) timer = timers[timerId] = {running:false, start:0};
         if (input) {
@@ -465,16 +474,27 @@ function evalExpr(node, scope, timers, now) {
         timer.running = false;
         return false;
       }
+      if (fn === 'CTU') {
+        if (node.args.length !== 3) throw new Error('CTU требует 3 аргумента: CTU(Имя, условие, число)');
+        const counterId = node.args[0].value;
+        const input = evalExpr(node.args[1], scope, timers, counters, now);
+        const preset = evalExpr(node.args[2], scope, timers, counters, now);
+        let counter = counters[counterId];
+        if (!counter) counter = counters[counterId] = {count:0, prev:false};
+        if (input && !counter.prev) counter.count++;
+        counter.prev = input;
+        return counter.count >= preset;
+      }
       throw new Error('Неизвестная функция ' + node.name);
     }
     default: throw new Error('Неизвестный узел ' + node.type);
   }
 }
 
-function execStmts(stmts, scope, timers, now) {
+function execStmts(stmts, scope, timers, counters, now) {
   for (const s of stmts) {
-    if (s.type === 'assign') scope[s.name] = evalExpr(s.expr, scope, timers, now);
-    else if (s.type === 'if') execStmts(evalExpr(s.cond, scope, timers, now) ? s.then : s.else, scope, timers, now);
+    if (s.type === 'assign') scope[s.name] = evalExpr(s.expr, scope, timers, counters, now);
+    else if (s.type === 'if') execStmts(evalExpr(s.cond, scope, timers, counters, now) ? s.then : s.else, scope, timers, counters, now);
   }
 }
 
@@ -490,6 +510,7 @@ function compile(src) {
 
 const IO = Object.create(null);   // все теги всех приборов + служебные переменные пользователя
 let timers = {};
+let counters = {};
 let ast = null;
 let scanTimerHandle = null;
 
@@ -499,11 +520,23 @@ function snap(v) { return Math.round(v / GRID) * GRID; }
 
 function makeBlink(period) { return Math.floor(performance.now() / period) % 2 === 0; }
 
+// поворот вращаемых приборов (сейчас только конвейер): 0=вправо,1=вниз,2=влево,3=вверх
+function rotatePoint(local, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return { x: local.x * c - local.y * s, y: local.x * s + local.y * c };
+}
+
 const DEVICE_DEFS = {
   conveyor: {
-    label: 'Конвейер', emoji: '📦', idPrefix: 'Conveyor', w: 170, h: 40,
+    label: 'Конвейер', emoji: '📦', idPrefix: 'Conveyor', w: 170, h: 40, rotatable: true,
+    hint: 'Выдели в режиме правки и нажми «⟳ Повернуть», чтобы менять направление движения (вправо/вниз/влево/вверх).',
     tags(id) { return [{key:`${id}_Motor`, dir:'OUT'}, {key:`${id}_Sensor`, dir:'IN'}]; },
-    makeState() { return { boxX: 0 }; },
+    makeState() { return { boxX: 0, dir: 0 }; },
+    footprint(dev) {
+      const { w, h } = DEVICE_DEFS.conveyor;
+      return (dev.state.dir % 2 === 1) ? { w: h, h: w } : { w, h };
+    },
+    rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
     physics(dev, dt, boxPositions) {
       const w = DEVICE_DEFS.conveyor.w, h = DEVICE_DEFS.conveyor.h, boxW = 24;
       const motorKey = `${dev.id}_Motor`, sensorKey = `${dev.id}_Sensor`;
@@ -511,7 +544,13 @@ const DEVICE_DEFS = {
       let bx = dev.state.boxX;
       const inZone = bx + boxW >= zoneStart && bx <= zoneEnd + 18;
       IO[sensorKey] = inZone;
-      const exitPoint = { x: dev.x + w, y: dev.y + h / 2 };
+
+      const angle = dev.state.dir * Math.PI / 2;
+      const fp = DEVICE_DEFS.conveyor.footprint(dev);
+      const center = { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
+      const exitOffset = rotatePoint({ x: w / 2, y: 0 }, angle);
+      const exitPoint = { x: center.x + exitOffset.x, y: center.y + exitOffset.y };
+
       const blocked = isBlockedNear(exitPoint, dev);
       const atGate = bx + boxW >= zoneEnd;
       const canMove = !!IO[motorKey] && !(atGate && blocked);
@@ -519,33 +558,45 @@ const DEVICE_DEFS = {
       if (bx > w + boxW * 2) bx = 0;
       if (blocked) bx = Math.min(bx, zoneEnd);
       dev.state.boxX = bx;
-      boxPositions.push({ x: dev.x + bx + boxW / 2, y: dev.y + h / 2 });
+
+      const boxOffset = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+      boxPositions.push({ x: center.x + boxOffset.x, y: center.y + boxOffset.y });
     },
     draw(ctx, dev) {
       const { w, h } = DEVICE_DEFS.conveyor;
-      const x = dev.x, y = dev.y;
+      const angle = dev.state.dir * Math.PI / 2;
+      const fp = DEVICE_DEFS.conveyor.footprint(dev);
+      const center = { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
+
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      ctx.rotate(angle);
+      // дальше рисуем в локальных координатах конвейера (0,0) = центр, ось X = направление движения
       ctx.fillStyle = '#161c24';
-      ctx.fillRect(x, y, w, h);
+      ctx.fillRect(-w / 2, -h / 2, w, h);
       ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, w, h);
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
       const motorOn = !!IO[`${dev.id}_Motor`];
       ctx.strokeStyle = '#2c3644'; ctx.lineWidth = 1;
       const tick = motorOn ? (performance.now() / 40) % 20 : 0;
-      for (let tx = x - tick; tx < x + w + 20; tx += 20) {
-        ctx.beginPath(); ctx.moveTo(tx, y); ctx.lineTo(tx, y + h); ctx.stroke();
+      for (let tx = -w / 2 - tick; tx < w / 2 + 20; tx += 20) {
+        ctx.beginPath(); ctx.moveTo(tx, -h / 2); ctx.lineTo(tx, h / 2); ctx.stroke();
       }
       const zoneStart = w - 70, zoneEnd = w - 14;
       const sensorOn = !!IO[`${dev.id}_Sensor`];
       ctx.fillStyle = sensorOn ? 'rgba(79,209,197,0.28)' : 'rgba(79,209,197,0.10)';
-      ctx.fillRect(x + zoneStart, y - 4, zoneEnd - zoneStart + 14, h + 8);
+      ctx.fillRect(-w / 2 + zoneStart, -h / 2 - 4, zoneEnd - zoneStart + 14, h + 8);
       const boxW = 24;
       ctx.fillStyle = '#f0b429';
-      ctx.fillRect(x + dev.state.boxX, y + h / 2 - 12, boxW, 24);
+      ctx.fillRect(-w / 2 + dev.state.boxX, -12, boxW, 24);
       ctx.strokeStyle = '#8a5a00';
-      ctx.strokeRect(x + dev.state.boxX, y + h / 2 - 12, boxW, 24);
+      ctx.strokeRect(-w / 2 + dev.state.boxX, -12, boxW, 24);
       ctx.fillStyle = motorOn ? '#4caf50' : '#8a94a6';
-      ctx.beginPath(); ctx.arc(x - 8, y + h / 2, 6, 0, Math.PI * 2); ctx.fill();
-      label(ctx, dev.id, x, y - 6);
+      ctx.beginPath(); ctx.arc(-w / 2 - 8, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // подпись — всегда прямая, вне трансформации поворота
+      label(ctx, dev.id, dev.x, dev.y - 6);
     }
   },
 
@@ -709,6 +760,57 @@ const DEVICE_DEFS = {
       label(ctx, dev.id, dev.x - 6, dev.y - 4);
     }
   },
+
+  trafficlight: {
+    label: 'Светофор', emoji: '🚦', idPrefix: 'Light', w: 30, h: 78,
+    tags(id) { return [{key:`${id}_Red`, dir:'OUT'}, {key:`${id}_Yellow`, dir:'OUT'}, {key:`${id}_Green`, dir:'OUT'}]; },
+    makeState() { return {}; },
+    physics() {},
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.trafficlight;
+      ctx.fillStyle = '#161c24';
+      roundRect(ctx, dev.x, dev.y, w, h, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2; ctx.stroke();
+      const colors = [
+        { key: `${dev.id}_Red`, on: '#ff4d4d', off: '#4a2222' },
+        { key: `${dev.id}_Yellow`, on: '#ffcc33', off: '#4a3f1a' },
+        { key: `${dev.id}_Green`, on: '#4caf50', off: '#204b26' },
+      ];
+      colors.forEach((c, i) => {
+        const cy = dev.y + 16 + i * 23;
+        ctx.beginPath(); ctx.arc(dev.x + w / 2, cy, 9, 0, Math.PI * 2);
+        ctx.fillStyle = IO[c.key] ? c.on : c.off;
+        ctx.fill();
+        ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 1.5; ctx.stroke();
+      });
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
+
+  estop: {
+    label: 'Авар. кнопка (НЗ)', emoji: '⛔', idPrefix: 'EStop', w: 40, h: 40, interactive: 'estop',
+    hint: 'Нормально-замкнутый контакт: тег = TRUE значит «всё в порядке». Клик — нажать/сработать аварию (тег станет FALSE), клик ещё раз — отпустить/сбросить.',
+    tags(id) { return [{key:id, dir:'IN', default:true}]; },
+    makeState() { return { latched: false }; },
+    physics() {},
+    draw(ctx, dev) {
+      const cx = dev.x + 20, cy = dev.y + 20;
+      const safe = !!IO[dev.id];
+      ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fill();
+      ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, safe ? 14 : 11, 0, Math.PI * 2);
+      ctx.fillStyle = safe ? '#ef5757' : '#7a1a1a';
+      ctx.fill();
+      if (!safe) {
+        ctx.strokeStyle = '#ffcc33'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.stroke();
+      }
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
 };
 
 function label(ctx, text, x, y) {
@@ -741,15 +843,18 @@ function isBlockedNear(point, excludeDev) {
 
 function deviceRect(dev) {
   const def = DEVICE_DEFS[dev.type];
-  return { x: dev.x, y: dev.y, w: def.w, h: def.h };
+  const size = def.footprint ? def.footprint(dev) : { w: def.w, h: def.h };
+  return { x: dev.x, y: dev.y, w: size.w, h: size.h };
 }
 function pointInDevice(dev, px, py) {
   const r = deviceRect(dev);
   return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
 }
 
+function tagDefault(t) { return t.default !== undefined ? t.default : false; }
+
 function registerTags(dev) {
-  DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { if (!(t.key in IO)) IO[t.key] = false; });
+  DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { if (!(t.key in IO)) IO[t.key] = tagDefault(t); });
 }
 function unregisterTags(dev) {
   DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { delete IO[t.key]; });
@@ -803,15 +908,18 @@ function removeDevice(dev) {
 function resetDeviceStates() {
   for (const dev of world.devices) {
     dev.state = DEVICE_DEFS[dev.type].makeState();
-    DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { IO[t.key] = false; });
+    DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { IO[t.key] = tagDefault(t); });
   }
   timers = {};
+  counters = {};
 }
 
 /* ---------------- задания режима "Обучение" ---------------- */
 
 const TASKS = [
+  // ---------- Уровень 1: Основы ----------
   {
+    level: 1, levelTitle: 'Основы',
     title: 'Лампа от кнопки',
     devices: [ ['button','Button1',60,150], ['lamp','Lamp1',300,150] ],
     desc: 'Сделай так, чтобы лампа <b>Lamp1</b> горела, пока нажата кнопка <b>Button1</b>, и гасла, когда кнопку отпускают.',
@@ -823,6 +931,7 @@ const TASKS = [
     ],
   },
   {
+    level: 1, levelTitle: 'Основы',
     title: 'И / ИЛИ',
     devices: [ ['button','Button1',50,90], ['button','Button2',50,190], ['lamp','Lamp1',280,90], ['siren','Siren1',280,190] ],
     desc: 'Лампа <b>Lamp1</b> должна гореть, если нажата <b>хотя бы одна</b> из кнопок (ИЛИ). Сирена <b>Siren1</b> должна включаться, только если нажаты <b>обе</b> кнопки сразу (И).',
@@ -836,6 +945,7 @@ const TASKS = [
     ],
   },
   {
+    level: 1, levelTitle: 'Основы',
     title: 'НЕ',
     devices: [ ['sensor','Sensor1',360,150], ['lamp','Lamp1',120,150] ],
     desc: 'Лампа <b>Lamp1</b> означает «путь свободен» — она должна гореть, когда деталь <b>НЕ</b> обнаружена датчиком <b>Sensor1</b>.',
@@ -846,7 +956,10 @@ const TASKS = [
       {set:{Sensor1:false}, now:0, expect:{Lamp1:true}, hint:'Деталь уехала — лампа снова горит.'},
     ],
   },
+
+  // ---------- Уровень 2: Память и время ----------
   {
+    level: 2, levelTitle: 'Память и время',
     title: 'Пуск/Стоп с самоподхватом',
     devices: [ ['button','ButtonStart',50,150], ['button','ButtonStop',150,150], ['motor','Motor1',350,150] ],
     desc: 'Классическая задача ПЛК: кнопки <b>ButtonStart</b>/<b>ButtonStop</b> нажимаются кратковременно (без фиксации). Нужно, чтобы <b>Motor1</b> включался кнопкой Пуск и <b>оставался включённым</b> после её отпускания, пока не нажата Стоп.',
@@ -859,6 +972,7 @@ const TASKS = [
     ],
   },
   {
+    level: 2, levelTitle: 'Память и время',
     title: 'Таймер TON',
     devices: [ ['sensor','Sensor1',360,150], ['gate','Gate1',560,140] ],
     desc: 'Ворота <b>Gate1</b> должны открываться через <b>2 секунды</b> после того, как датчик <b>Sensor1</b> сработает — используй функцию <code>TON(Имя, условие, миллисекунды)</code>.',
@@ -871,7 +985,55 @@ const TASKS = [
     ],
   },
   {
-    title: 'Итог: целая линия',
+    level: 2, levelTitle: 'Память и время',
+    title: 'Мигающая лампа',
+    devices: [ ['button','Button1',80,150], ['lamp','Lamp1',400,150] ],
+    desc: 'Пока нажата кнопка <b>Button1</b>, лампа <b>Lamp1</b> должна мигать короткими вспышками примерно раз в 0.5 секунды — а не гореть постоянно. Хитрость: TON может сам себя перезапускать, если его условие зависит от его же результата: <code>TON(Имя, NOT Переменная, время)</code>.',
+    starter: '// Pulse := TON(FlashTimer, NOT Pulse, 500);\n// Lamp1 := Button1 AND Pulse;\n',
+    steps: [
+      {set:{Button1:true}, now:0, expect:{Lamp1:false}, hint:'Сразу после нажатия таймер только начал отсчёт — лампа ещё не горит.'},
+      {set:{}, now:300, expect:{Lamp1:false}, hint:'Прошло меньше 500мс — лампа ещё не должна вспыхнуть.'},
+      {set:{}, now:600, expect:{Lamp1:true}, hint:'Примерно через 500мс должна произойти короткая вспышка.'},
+      {set:{}, now:610, expect:{Lamp1:false}, hint:'Вспышка должна быть короткой — сама гаснет сразу же.'},
+      {set:{}, now:611, expect:{Lamp1:false}, hint:'Импульс запускается заново (NOT Pulse снова TRUE) — таймер только начал новый отсчёт.'},
+      {set:{}, now:1150, expect:{Lamp1:true}, hint:'Ещё примерно через 500мс должна быть новая вспышка.'},
+      {set:{Button1:false}, now:1160, expect:{Lamp1:false}, hint:'Когда кнопку отпустили, лампа должна погаснуть независимо от таймера.'},
+    ],
+  },
+
+  // ---------- Уровень 3: Счётчики и каскады ----------
+  {
+    level: 3, levelTitle: 'Счётчики и каскады',
+    title: 'Счётчик срабатываний (CTU)',
+    devices: [ ['sensor','Sensor1',360,150], ['gate','Gate1',560,140] ],
+    desc: 'Ворота <b>Gate1</b> должны открываться только после того, как датчик <b>Sensor1</b> сработает <b>3 раза</b> (три отдельные детали проехали). Используй <code>CTU(Имя, условие, число)</code> — он считает нарастающие фронты (переходы FALSE→TRUE) условия и не будет считать повторно, пока условие держится TRUE.',
+    starter: '// Gate1_Open := CTU(PartsCounter, Sensor1, 3);\n',
+    steps: [
+      {set:{Sensor1:false}, now:0, expect:{Gate1_Open:false}, hint:'Пока датчик не сработал ни разу — ворота закрыты.'},
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:false}, hint:'Первое срабатывание — ещё рано, нужно 3.'},
+      {set:{Sensor1:false}, now:0, expect:{Gate1_Open:false}, hint:'Деталь проехала, датчик отпустил.'},
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:false}, hint:'Второе срабатывание — всё ещё рано.'},
+      {set:{Sensor1:false}, now:0, expect:{Gate1_Open:false}, hint:''},
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:true}, hint:'Третье срабатывание — теперь ворота должны открыться.'},
+    ],
+  },
+  {
+    level: 3, levelTitle: 'Счётчики и каскады',
+    title: 'Светофор по каскаду таймеров',
+    devices: [ ['button','ButtonStart',60,150], ['trafficlight','Light1',400,120] ],
+    desc: 'После нажатия <b>ButtonStart</b> светофор <b>Light1</b> должен: сразу зажечь зелёный; через <b>2 секунды</b> переключиться на жёлтый; ещё через <b>1 секунду</b> (то есть через 3 секунды после старта) — на красный и остаться на нём. Пока кнопка не нажата — горит красный. Используй два независимых таймера TON, отсчитывающих от одного и того же момента.',
+    starter: '// YellowTimer := TON(T1, ButtonStart, 2000);\n// RedTimer    := TON(T2, ButtonStart, 3000);\n// Light1_Green  := ButtonStart AND NOT YellowTimer;\n// Light1_Yellow := YellowTimer AND NOT RedTimer;\n// Light1_Red    := (NOT ButtonStart) OR RedTimer;\n',
+    steps: [
+      {set:{ButtonStart:false}, now:0, expect:{Light1_Red:true, Light1_Yellow:false, Light1_Green:false}, hint:'Пока не нажат Пуск — горит только красный.'},
+      {set:{ButtonStart:true}, now:0, expect:{Light1_Green:true, Light1_Yellow:false, Light1_Red:false}, hint:'Сразу после Пуск — должен загореться зелёный.'},
+      {set:{}, now:1000, expect:{Light1_Green:true, Light1_Yellow:false, Light1_Red:false}, hint:'Прошла всего 1 секунда — всё ещё зелёный.'},
+      {set:{}, now:2200, expect:{Light1_Green:false, Light1_Yellow:true, Light1_Red:false}, hint:'Прошло больше 2 секунд — должен включиться жёлтый.'},
+      {set:{}, now:3200, expect:{Light1_Green:false, Light1_Yellow:false, Light1_Red:true}, hint:'Прошло больше 3 секунд — должен включиться и остаться красный.'},
+    ],
+  },
+  {
+    level: 3, levelTitle: 'Счётчики и каскады',
+    title: 'Линия с накоплением',
     devices: [ ['button','ButtonStart',30,260], ['button','ButtonStop',120,260], ['conveyor','Conveyor1',30,150], ['gate','Gate1',630,110], ['lamp','Lamp1',700,260] ],
     desc: 'Собери всё вместе: <b>ButtonStart/ButtonStop</b> с самоподхватом двигают <b>Conveyor1_Motor</b>. Деталь доезжает до <b>Conveyor1_Sensor</b>. Ворота <b>Gate1</b> открываются через 1 секунду после срабатывания датчика (TON). Пока деталь стоит у датчика, а ворота ещё закрыты — должна гореть лампа <b>Lamp1</b> (сигнал ожидания).',
     starter: '// 1) Самоподхват: Conveyor1_Motor := (ButtonStart OR Conveyor1_Motor) AND NOT ButtonStop;\n// 2) Таймер:      Gate1_Open := TON(GateDelay, Conveyor1_Sensor, 1000);\n// 3) Лампа:        Lamp1 := Conveyor1_Sensor AND NOT Gate1_Open;\n',
@@ -882,6 +1044,47 @@ const TASKS = [
       {set:{}, now:2200, expect:{Gate1_Open:true, Lamp1:false}, hint:'Прошло больше 1 секунды — ворота должны открыться, лампа ожидания — погаснуть.'},
       {set:{Conveyor1_Sensor:false}, now:2300, expect:{Gate1_Open:false, Lamp1:false, Conveyor1_Motor:true}, hint:'Деталь проехала — ворота закрываются, конвейер продолжает работать.'},
       {set:{ButtonStop:true}, now:2300, expect:{Conveyor1_Motor:false}, hint:'Стоп должен остановить конвейер.'},
+    ],
+  },
+
+  // ---------- Уровень 4: Супер-продвинутый ----------
+  {
+    level: 4, levelTitle: 'Супер-продвинутый',
+    title: 'Линия с защитой (финал)',
+    devices: [
+      ['button','ButtonStart',30,260], ['button','ButtonStop',120,260],
+      ['estop','EStop1',220,260], ['conveyor','Conveyor1',30,150],
+      ['gate','Gate1',630,110], ['trafficlight','Status1',700,60],
+    ],
+    desc: 'Финальная задача — собери линию с защитой:<br>' +
+      '1) <b>Conveyor1_Motor</b> включается ButtonStart с самоподхватом, выключается ButtonStop.<br>' +
+      '2) <b>EStop1</b> — аварийная кнопка с <b>нормально-замкнутым</b> контактом: TRUE значит «всё в порядке», FALSE — авария нажата. Если авария сработала, конвейер должен немедленно и безусловно остановиться.<br>' +
+      '3) Ворота <b>Gate1</b> открываются, когда <b>Conveyor1_Sensor</b> сработал 3 раза подряд (CTU).<br>' +
+      '4) Светофор <b>Status1</b>: зелёный — конвейер работает; жёлтый — стоит, но авария не активна; красный — сработала авария.',
+    starter: '// Conveyor1_Motor := (ButtonStart OR Conveyor1_Motor) AND NOT ButtonStop AND EStop1;\n' +
+      '// Gate1_Open := CTU(C1, Conveyor1_Sensor, 3);\n' +
+      '// Status1_Red := NOT EStop1;\n' +
+      '// Status1_Green := EStop1 AND Conveyor1_Motor;\n' +
+      '// Status1_Yellow := EStop1 AND NOT Conveyor1_Motor;\n',
+    steps: [
+      {set:{ButtonStart:false, ButtonStop:false, EStop1:true, Conveyor1_Sensor:false}, now:0,
+        expect:{Conveyor1_Motor:false, Status1_Red:false, Status1_Yellow:true, Status1_Green:false},
+        hint:'В начале конвейер стоит, авария не нажата — должен гореть жёлтый.'},
+      {set:{ButtonStart:true}, now:0,
+        expect:{Conveyor1_Motor:true, Status1_Green:true, Status1_Yellow:false},
+        hint:'Пуск запускает конвейер — светофор должен стать зелёным.'},
+      {set:{ButtonStart:false}, now:0, expect:{Conveyor1_Motor:true}, hint:'Самоподхват должен удержать конвейер включённым.'},
+      {set:{EStop1:false}, now:0,
+        expect:{Conveyor1_Motor:false, Status1_Red:true, Status1_Green:false, Status1_Yellow:false},
+        hint:'Авария (EStop1=FALSE) должна немедленно остановить конвейер и зажечь красный, независимо от самоподхвата.'},
+      {set:{EStop1:true}, now:0,
+        expect:{Conveyor1_Motor:false, Status1_Red:false, Status1_Yellow:true},
+        hint:'После снятия аварии конвейер НЕ должен запускаться сам — нужно заново нажать Пуск. Светофор — жёлтый.'},
+      {set:{Conveyor1_Sensor:true}, now:0, expect:{Gate1_Open:false}, hint:'Первое срабатывание датчика — ещё рано открывать ворота.'},
+      {set:{Conveyor1_Sensor:false}, now:0, expect:{}, hint:''},
+      {set:{Conveyor1_Sensor:true}, now:0, expect:{Gate1_Open:false}, hint:'Второе срабатывание.'},
+      {set:{Conveyor1_Sensor:false}, now:0, expect:{}, hint:''},
+      {set:{Conveyor1_Sensor:true}, now:0, expect:{Gate1_Open:true}, hint:'Третье срабатывание — ворота должны открыться.'},
     ],
   },
 ];
@@ -897,7 +1100,8 @@ function loadTask(idx) {
   const task = TASKS[idx];
   clearDevices();
   for (const [type, id, x, y] of task.devices) addDevice(type, x, y, id);
-  document.getElementById('taskDesc').innerHTML = `<b>Задание ${idx+1}: ${task.title}</b><br>${task.desc}`;
+  document.getElementById('taskDesc').innerHTML =
+    `<b>Уровень ${task.level} · ${task.levelTitle} — ${task.title}</b><br>${task.desc}`;
   codeEl.value = savedTaskCode[idx] !== undefined ? savedTaskCode[idx] : task.starter;
   updateHighlight();
   renderTaskList();
@@ -907,9 +1111,18 @@ function loadTask(idx) {
 
 function renderTaskList() {
   const el = document.getElementById('taskList');
-  el.innerHTML = TASKS.map((t, i) =>
-    `<button data-i="${i}" class="${i === currentTaskIndex ? 'primary' : ''} ${completedTasks.includes(i) ? 'done' : ''}">${i+1}</button>`
-  ).join('');
+  let html = '';
+  let lastLevel = null;
+  TASKS.forEach((t, i) => {
+    if (t.level !== lastLevel) {
+      if (lastLevel !== null) html += '</div>';
+      html += `<div class="level-header">Уровень ${t.level} · ${t.levelTitle}</div><div class="tasklist">`;
+      lastLevel = t.level;
+    }
+    html += `<button data-i="${i}" class="${i === currentTaskIndex ? 'primary' : ''} ${completedTasks.includes(i) ? 'done' : ''}">${i + 1}</button>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => loadTask(parseInt(b.dataset.i, 10))));
 }
 
@@ -920,9 +1133,10 @@ function runTaskCheck() {
   catch (e) { return showCheckResult(false, 'Ошибка компиляции: ' + e.message); }
   const scope = {};
   const checkTimers = {};
+  const checkCounters = {};
   for (const step of task.steps) {
     Object.assign(scope, step.set);
-    try { execStmts(checkAst, scope, checkTimers, step.now); }
+    try { execStmts(checkAst, scope, checkTimers, checkCounters, step.now); }
     catch (e) { return showCheckResult(false, 'Ошибка выполнения: ' + e.message); }
     for (const key in step.expect) {
       const got = !!scope[key];
@@ -988,7 +1202,7 @@ function switchMode(mode) {
       const saved = JSON.parse(localStorage.getItem('plcSandboxScene') || 'null');
       if (saved && saved.devices) {
         world.typeCounters = saved.typeCounters || {};
-        saved.devices.forEach(d => addDevice(d.type, d.x, d.y, d.id));
+        saved.devices.forEach(restoreDevice);
         restored = true;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -1010,7 +1224,7 @@ function renderPalette() {
   const el = document.getElementById('palette');
   el.innerHTML = Object.keys(DEVICE_DEFS).map(type => {
     const d = DEVICE_DEFS[type];
-    return `<button data-type="${type}" class="${world.placingType === type ? 'armed' : ''}"><span class="emoji">${d.emoji}</span>${d.label}</button>`;
+    return `<button data-type="${type}" class="${world.placingType === type ? 'armed' : ''}" title="${d.hint || ''}"><span class="emoji">${d.emoji}</span>${d.label}</button>`;
   }).join('');
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     world.placingType = world.placingType === b.dataset.type ? null : b.dataset.type;
@@ -1031,7 +1245,20 @@ function updateEditModeButton() {
   btn.textContent = '✏️ Режим правки: ' + (world.editMode ? 'вкл' : 'выкл');
   btn.classList.toggle('primary', world.editMode);
   document.getElementById('btnDeleteSelected').disabled = !(world.editMode && world.selectedId);
+  const selectedDev = world.devices.find(d => d.id === world.selectedId);
+  const canRotate = world.editMode && selectedDev && DEVICE_DEFS[selectedDev.type].rotatable;
+  document.getElementById('btnRotateSelected').disabled = !canRotate;
 }
+
+document.getElementById('btnRotateSelected').addEventListener('click', () => {
+  const dev = world.devices.find(d => d.id === world.selectedId);
+  const def = dev && DEVICE_DEFS[dev.type];
+  if (!dev || !def || !def.rotate) return;
+  def.rotate(dev);
+  const fp = def.footprint ? def.footprint(dev) : { w: def.w, h: def.h };
+  dev.x = snap(Math.max(0, Math.min(CANVAS_W - fp.w, dev.x)));
+  dev.y = snap(Math.max(0, Math.min(CANVAS_H - fp.h, dev.y)));
+});
 
 document.getElementById('btnEditMode').addEventListener('click', () => {
   if (world.mode !== 'sandbox') return;
@@ -1065,9 +1292,23 @@ document.getElementById('btnClearAll').addEventListener('click', (e) => {
   toast('Сцена очищена');
 });
 
+// сериализация приборов: помимо позиции сохраняем настраиваемые поля
+// состояния (сейчас только dir у поворачиваемых приборов) — не всё
+// dev.state целиком, чтобы не тащить физику (boxX, spin и т.п.)
+function serializeDevice(d) {
+  const out = { id: d.id, type: d.type, x: d.x, y: d.y };
+  if (DEVICE_DEFS[d.type].rotatable) out.dir = d.state.dir;
+  return out;
+}
+function restoreDevice(d) {
+  const dev = addDevice(d.type, d.x, d.y, d.id);
+  if (d.dir !== undefined) dev.state.dir = d.dir;
+  return dev;
+}
+
 document.getElementById('btnSave').addEventListener('click', () => {
   localStorage.setItem('plcSandboxScene', JSON.stringify({
-    devices: world.devices.map(d => ({ id: d.id, type: d.type, x: d.x, y: d.y })),
+    devices: world.devices.map(serializeDevice),
     typeCounters: world.typeCounters,
   }));
   localStorage.setItem('plcSandboxCode', codeEl.value);
@@ -1081,7 +1322,7 @@ document.getElementById('btnLoad').addEventListener('click', () => {
     const saved = JSON.parse(raw);
     clearDevices();
     world.typeCounters = saved.typeCounters || {};
-    saved.devices.forEach(d => addDevice(d.type, d.x, d.y, d.id));
+    saved.devices.forEach(restoreDevice);
     codeEl.value = localStorage.getItem('plcSandboxCode') || codeEl.value;
     updateHighlight();
     doCompileAndRun();
@@ -1094,7 +1335,7 @@ document.getElementById('btnExportToggle').addEventListener('click', () => {
 });
 document.getElementById('btnExportFill').addEventListener('click', () => {
   document.getElementById('exportText').value = JSON.stringify({
-    devices: world.devices.map(d => ({ id: d.id, type: d.type, x: d.x, y: d.y })),
+    devices: world.devices.map(serializeDevice),
     typeCounters: world.typeCounters,
     code: codeEl.value,
   }, null, 2);
@@ -1105,7 +1346,7 @@ document.getElementById('btnImportApply').addEventListener('click', () => {
     const data = JSON.parse(document.getElementById('exportText').value);
     clearDevices();
     world.typeCounters = data.typeCounters || {};
-    (data.devices || []).forEach(d => addDevice(d.type, d.x, d.y, d.id));
+    (data.devices || []).forEach(restoreDevice);
     if (typeof data.code === 'string') codeEl.value = data.code;
     updateHighlight();
     doCompileAndRun();
@@ -1178,6 +1419,10 @@ function onCanvasDown(pt, evt) {
     window.addEventListener('touchend', up);
   } else if (def.interactive === 'toggle') {
     IO[dev.id] = !IO[dev.id];
+  } else if (def.interactive === 'estop') {
+    // нормально-замкнутый контакт: IO=TRUE значит "всё в порядке"
+    dev.state.latched = !dev.state.latched;
+    IO[dev.id] = !dev.state.latched;
   }
 }
 
@@ -1276,7 +1521,7 @@ const scanBadge = document.getElementById('scanBadge');
 function runScan() {
   if (!ast) return;
   try {
-    execStmts(ast, IO, timers, performance.now());
+    execStmts(ast, IO, timers, counters, performance.now());
     clearError();
   } catch (e) {
     showError('Ошибка выполнения: ' + e.message);
@@ -1366,6 +1611,7 @@ function doCompileAndRun() {
     ast = compile(codeEl.value);
     clearError();
     timers = {};
+    counters = {};
     startScan();
   } catch (e) {
     ast = null;
