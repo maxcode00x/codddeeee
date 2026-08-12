@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { IoPoint } from '../db/schema';
+import type { Equipment, IoPoint, PunchItem } from '../db/schema';
 
 const STATUS_LABEL: Record<IoPoint['status'], string> = {
   not_checked: 'не проверено',
@@ -46,4 +46,63 @@ export function exportIoProtocolPdf(points: IoPoint[], title: string) {
   doc.text(`Дата: ${new Date().toLocaleDateString('ru-RU')}`, 160, finalY);
 
   doc.save(`io-protocol-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+export function exportPunchListPdf(items: PunchItem[], objectPathById: Map<string, string>, title: string) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text(title, 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Дата: ${new Date().toLocaleDateString('ru-RU')}`, 14, 20);
+
+  autoTable(doc, {
+    startY: 26,
+    head: [['Приоритет', 'Объект', 'Описание', 'Ответственный', 'Срок', 'Статус']],
+    body: items.map((p) => [
+      p.priority,
+      (p.objectId && objectPathById.get(p.objectId)) || '',
+      p.description,
+      p.responsible,
+      p.deadline ? new Date(p.deadline).toLocaleDateString('ru-RU') : '',
+      p.status === 'open' ? 'открыто' : 'закрыто',
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [30, 41, 59] },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 0) {
+        const pr = items[data.row.index]?.priority;
+        if (pr === 'A') data.cell.styles.textColor = [180, 30, 30];
+        else if (pr === 'B') data.cell.styles.textColor = [160, 110, 0];
+      }
+    },
+  });
+
+  doc.save(`punch-list-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+export function exportEquipmentPdf(items: Equipment[], objectPathById: Map<string, string>, title: string) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text(title, 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Дата: ${new Date().toLocaleDateString('ru-RU')}`, 14, 20);
+
+  autoTable(doc, {
+    startY: 26,
+    head: [['Объект', 'Тип', 'Артикул', 'Серийный №', 'Прошивка', 'PROFINET имя/IP', 'PROFIBUS', 'Бэкап']],
+    body: items.map((e) => [
+      (e.objectId && objectPathById.get(e.objectId)) || '',
+      e.type,
+      e.article,
+      e.serialNumber,
+      e.firmware,
+      [e.profinetName, e.profinetIp].filter(Boolean).join(' / '),
+      e.profibusAddress,
+      e.backupLocation,
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [30, 41, 59] },
+  });
+
+  doc.save(`equipment-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
