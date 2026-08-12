@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ПЛК от новичка до профи · Том 2. Логика</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:#EFF1EB; --panel-2:#E3E8DF; --rail:#D5DCD1; --line:#B5C0B2;
+  --ink:#1E2422; --dim:#515B54;
+  --brown:#8A5522; --blue:#1F5391; --safety:#A87400; --live:#1C6B4C; --alarm:#A32C24;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--panel);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;line-height:1.65;padding-bottom:80px}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+/* --- обложка --- */
+.cover{min-height:78vh;display:flex;flex-direction:column;justify-content:center;
+  border-bottom:3px solid var(--safety);
+  background:repeating-linear-gradient(135deg,rgba(168,116,0,.09) 0 14px,transparent 14px 28px),
+    radial-gradient(circle at 78% 22%,rgba(28,107,76,.09),transparent 55%),var(--panel-2);
+  padding:70px 0 50px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--safety);margin:0 0 14px}
+.cover h1{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;
+  font-size:clamp(40px,11vw,84px);line-height:.94;letter-spacing:.01em;margin:0;text-transform:uppercase}
+.cover h1 em{font-style:normal;color:var(--safety);display:block}
+.cover .sub{font-size:18px;color:var(--dim);max-width:560px;margin:22px 0 0}
+.tomtag{display:inline-block;border:2px solid var(--safety);color:var(--safety);
+  font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:20px;letter-spacing:.08em;
+  padding:4px 14px;text-transform:uppercase;margin-bottom:26px}
+/* --- оглавление --- */
+.toc{background:var(--panel-2);border:1px solid var(--line);padding:24px;margin:46px 0}
+.toc h2{margin:0 0 14px;font-size:22px;border:0;padding:0}
+.toc h2::before{content:none}
+.toc ol{list-style:none;counter-reset:c;padding:0;margin:0}
+.toc li{counter-increment:c;border-bottom:1px dashed var(--line);padding:9px 0}
+.toc li:last-child{border:0}
+.toc li::before{content:counter(c,decimal-leading-zero);font-family:"IBM Plex Mono",monospace;
+  font-size:12px;color:var(--safety);margin-right:12px}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+.toc a:hover,.toc a:focus{border-bottom-color:var(--safety);color:#141917}
+/* --- типографика --- */
+h2{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:clamp(28px,6vw,38px);
+  text-transform:uppercase;letter-spacing:.02em;margin:70px 0 8px;padding-top:22px;
+  border-top:2px solid var(--line)}
+h2::before{content:attr(data-n);font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--safety);display:block;letter-spacing:.2em;margin-bottom:8px;font-weight:500}
+h3{font-family:"Barlow Condensed",sans-serif;font-size:24px;text-transform:uppercase;
+  letter-spacing:.03em;margin:38px 0 4px}
+h4{font-family:"Barlow Condensed",sans-serif;font-size:19px;letter-spacing:.03em;margin:24px 0 2px;color:var(--safety)}
+p{margin:12px 0}
+strong{color:#141917;font-weight:600}
+ul,ol{padding-left:22px}li{margin:7px 0}
+code{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;padding:2px 6px;
+  border-radius:2px;font-size:.88em;color:var(--safety)}
+/* --- схемы --- */
+figure{margin:28px 0;background:var(--panel-2);border:1px solid var(--line);padding:18px 14px 12px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);line-height:1.55}
+.txt-s{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#515B54;letter-spacing:.04em}
+.txt-m{font-family:"IBM Plex Mono",monospace;font-size:13px;fill:#1E2422}
+.txt-hi{font-family:"Barlow Condensed",sans-serif;font-size:16px;fill:#1E2422;font-weight:600;letter-spacing:.04em}
+/* --- таблицы --- */
+.tw{overflow-x:auto;margin:22px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:460px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--rail);font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  letter-spacing:.06em;font-size:15px;font-weight:600}
+td:first-child{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--safety);white-space:nowrap}
+/* --- врезки --- */
+.note{border-left:3px solid var(--safety);background:var(--panel-2);padding:14px 16px;margin:24px 0}
+.note.danger{border-left-color:var(--alarm)}
+.note.ok{border-left-color:var(--live)}
+.note .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:5px}
+.note.danger .lbl{color:var(--alarm)}.note.ok .lbl{color:var(--live)}
+.formula{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;border:1px solid var(--line);
+  padding:14px 16px;font-size:13.5px;overflow-x:auto;margin:18px 0;color:var(--live);white-space:pre}
+.task{border:1px dashed var(--safety);padding:18px;margin:34px 0;background:rgba(168,116,0,.06)}
+.task .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:8px}
+.gloss dt{font-family:"IBM Plex Mono",monospace;color:var(--safety);font-size:14px;margin-top:14px}
+.gloss dd{margin:2px 0 0;padding-left:0;color:var(--ink)}
+.end{margin-top:70px;padding-top:24px;border-top:2px solid var(--safety);color:var(--dim);font-size:14px}
+@media(max-width:560px){body{font-size:15px}figure{padding:12px 8px 10px}}
+@media(prefers-reduced-motion:no-preference){
+  .pulse{animation:p 2.6s ease-in-out infinite}@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}}
+
+/* --- том 2: листинги и диаграммы --- */
+.rung{font-family:"IBM Plex Mono",monospace;background:#E8EDE4;border:1px solid var(--line);
+  padding:12px 14px;margin:14px 0;font-size:13px;line-height:1.85;overflow-x:auto;white-space:pre}
+.rung b{color:var(--safety);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:14px 0 0;padding:0;list-style:none;
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--dim)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:20px;height:3px;border-radius:2px;display:inline-block}
+.tt{width:auto;min-width:0;font-size:13px}
+.tt td,.tt th{text-align:center;padding:6px 14px}
+.state{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  border-left:2px solid var(--line);padding-left:10px;margin:10px 0}
+</style>
+</head><body>
+<section class="cover">
+  <div class="wrap">
+    <span class="tomtag">Том 2</span>
+    <p class="eyebrow">ПЛК от новичка до профи · курс для электрика</p>
+    <h1>Логика<em>Как из контактов собирается управление</em></h1>
+    <p class="sub">Булева алгебра на языке релейных схем, язык Ladder, самоподхват, фронты, таймеры и счётчики. От первой цепи до работающей программы конвейера.</p>
+  </div>
+</section>
+
+<div class="wrap">
+
+<div class="toc">
+  <h2>Содержание тома</h2>
+  <ol>
+    <li><a href="#g1">Булева логика: И, ИЛИ, НЕ</a></li>
+    <li><a href="#g2">Язык Ladder: как устроена цепь</a></li>
+    <li><a href="#g3">Главная ловушка: NC в поле и NC в программе</a></li>
+    <li><a href="#g4">Пуск-стоп с самоподхватом</a></li>
+    <li><a href="#g5">Set и Reset: второй способ запомнить</a></li>
+    <li><a href="#g6">Фронты: поймать момент, а не состояние</a></li>
+    <li><a href="#g7">Таймеры TON, TOF, TP</a></li>
+    <li><a href="#g8">Счётчики CTU, CTD, CTUD</a></li>
+    <li><a href="#g9">Собираем программу конвейера</a></li>
+    <li><a href="#g10">Типовые ошибки и шпаргалка</a></li>
+  </ol>
+</div>
+
+<!-- ============ ГЛАВА 1 ============ -->
+<h2 id="g1" data-n="Глава 01">Булева логика: И, ИЛИ, НЕ</h2>
+
+<p>Ты уже знаешь эту математику, просто она называлась иначе. Когда ты ставил два контакта <strong>последовательно</strong> — ты писал «И». Когда <strong>параллельно</strong> — «ИЛИ». Когда брал нормально замкнутый контакт вместо разомкнутого — «НЕ». Вся логика ПЛК строится из этих трёх операций, и больше ни из чего.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Три базовые операции: И, ИЛИ, НЕ в виде контактных схем">
+  <!-- AND -->
+  <text x="130" y="26" text-anchor="middle" class="txt-hi">И · AND</text>
+  <text x="130" y="46" text-anchor="middle" class="txt-s">контакты последовательно</text>
+  <path d="M30 90 H70" stroke="#8A5522" stroke-width="2.5" fill="none"/>
+  <path d="M70 82 V98 M78 90 H108" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M108 82 V98" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="89" y="74" text-anchor="middle" class="txt-s">A</text>
+  <path d="M108 90 H140" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M140 82 V98 M148 90 H178" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M178 82 V98" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="159" y="74" text-anchor="middle" class="txt-s">B</text>
+  <path d="M178 90 H206" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <circle cx="218" cy="90" r="12" fill="none" stroke="#1C6B4C" stroke-width="2.5"/>
+  <text x="218" y="120" text-anchor="middle" class="txt-s" fill="#1C6B4C">Q</text>
+  <text x="130" y="152" text-anchor="middle" class="txt-m">Q = A И B</text>
+  <text x="130" y="172" text-anchor="middle" class="txt-s">оба должны быть включены</text>
+
+  <!-- OR -->
+  <path d="M280 16 V285" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+  <text x="415" y="26" text-anchor="middle" class="txt-hi">ИЛИ · OR</text>
+  <text x="415" y="46" text-anchor="middle" class="txt-s">контакты параллельно</text>
+  <path d="M320 90 H350" stroke="#8A5522" stroke-width="2.5" fill="none"/>
+  <path d="M350 90 V64 H362" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M362 56 V72 M370 64 H400" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M400 56 V72" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="381" y="48" text-anchor="middle" class="txt-s">A</text>
+  <path d="M400 64 H430 V90" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M350 90 V116 H362" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M362 108 V124 M370 116 H400" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M400 108 V124" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="381" y="100" text-anchor="middle" class="txt-s">B</text>
+  <path d="M400 116 H430" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M430 90 H478" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <circle cx="490" cy="90" r="12" fill="none" stroke="#1C6B4C" stroke-width="2.5"/>
+  <text x="490" y="120" text-anchor="middle" class="txt-s" fill="#1C6B4C">Q</text>
+  <text x="415" y="152" text-anchor="middle" class="txt-m">Q = A ИЛИ B</text>
+  <text x="415" y="172" text-anchor="middle" class="txt-s">достаточно любого</text>
+
+  <!-- NOT -->
+  <path d="M545 16 V285" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+  <text x="672" y="26" text-anchor="middle" class="txt-hi">НЕ · NOT</text>
+  <text x="672" y="46" text-anchor="middle" class="txt-s">нормально замкнутый контакт</text>
+  <path d="M590 90 H630" stroke="#8A5522" stroke-width="2.5" fill="none"/>
+  <path d="M630 82 V98 M638 90 H668" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M668 82 V98" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M628 100 L670 80" stroke="#A32C24" stroke-width="2.5" fill="none"/>
+  <text x="649" y="74" text-anchor="middle" class="txt-s">A</text>
+  <path d="M668 90 H710" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <circle cx="722" cy="90" r="12" fill="none" stroke="#1C6B4C" stroke-width="2.5"/>
+  <text x="722" y="120" text-anchor="middle" class="txt-s" fill="#1C6B4C">Q</text>
+  <text x="672" y="152" text-anchor="middle" class="txt-m">Q = НЕ A</text>
+  <text x="672" y="172" text-anchor="middle" class="txt-s">пропускает, пока A выключен</text>
+
+  <text x="400" y="230" text-anchor="middle" class="txt-hi">ЭТО ТА ЖЕ СХЕМА, ЧТО В ШКАФУ</text>
+  <text x="400" y="256" text-anchor="middle" class="txt-s">Разница только в том, что контакты здесь — биты в памяти, а не медь на рейке.</text>
+  <text x="400" y="276" text-anchor="middle" class="txt-s">Поэтому язык и назвали релейным: чтобы электрик читал программу без переучивания.</text>
+</svg>
+<figcaption>Три операции, из которых собирается всё остальное. Последовательно — И. Параллельно — ИЛИ. Инверсный контакт — НЕ.</figcaption>
+</figure>
+
+<h3>Таблицы истинности</h3>
+
+<p>Таблица истинности перечисляет все возможные комбинации входов и результат. Для двух входов комбинаций четыре.</p>
+
+<div class="tw">
+<table class="tt">
+<tr><th>A</th><th>B</th><th>A И B</th><th>A ИЛИ B</th><th>НЕ A</th></tr>
+<tr><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+<tr><td>0</td><td>1</td><td>0</td><td>1</td><td>1</td></tr>
+<tr><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+<tr><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+</table>
+</div>
+
+<p>Обрати внимание на последнюю строку в столбце ИЛИ. Когда сработали <strong>оба</strong> входа, результат тоже единица. Это отвечает на частый вопрос новичка: если заказчик просит «пуск при срабатывании хотя бы одного датчика», не нужно писать три условия — «первый», «второй» и «оба». Достаточно одного ИЛИ: случай «оба» оно покрывает автоматически.</p>
+
+<h3>Комбинации из трёх и более условий</h3>
+
+<p>Реальные условия обычно длиннее. Например: <em>мотор работает, если нажат пуск, И не нажат стоп, И давление в норме, И дверь ограждения закрыта</em>. Это просто четыре контакта подряд в одной цепи.</p>
+
+<p>Смешивать И с ИЛИ тоже можно, и тут важен порядок. Условие <em>(автоматический режим ИЛИ ручной режим) И давление в норме</em> — это не то же самое, что <em>автоматический режим ИЛИ (ручной режим И давление в норме)</em>. В первом случае давление проверяется всегда, во втором — только для ручного режима. В релейной схеме порядок задаётся тем, где стоит перемычка, в Ladder — тем, как нарисована параллельная ветка.</p>
+
+<div class="note">
+<span class="lbl">Полезный приём</span>
+Прежде чем рисовать цепь, проговори условие словами и запиши его на бумаге: «Q включается, если … И … , но НЕ если …». Девять из десяти ошибок в логике возникают не при наборе программы, а на этом этапе — когда постановка задачи в голове осталась размытой.
+</div>
+
+<h3>Ещё две операции, которые встретятся</h3>
+<ul>
+  <li><strong>XOR (исключающее ИЛИ)</strong> — истина, когда входы <em>различаются</em>. Классическое применение: управление светом с двух мест, как проходной выключатель в коридоре.</li>
+  <li><strong>NAND и NOR</strong> — это просто «НЕ И» и «НЕ ИЛИ». Отдельно ты их писать почти не будешь, но в схемах FBD они встречаются.</li>
+</ul>
+
+<div class="task">
+<span class="lbl">Задание 1</span>
+Запиши словами условие для насоса: он должен работать, если бак не полон И нажат пуск, но при этом сухой ход запрещён — то есть при отсутствии воды на входе насос не пускается ни при каких условиях. Сколько контактов будет в цепи и какие из них нормально замкнутые?
+</div>
+
+<!-- ============ ГЛАВА 2 ============ -->
+<h2 id="g2" data-n="Глава 02">Язык Ladder: как устроена цепь</h2>
+
+<p>Ladder Diagram (LD, «релейно-контактная логика», в русской документации часто РКС) выглядит как электрическая схема, повёрнутая на бок. Слева вертикальная линия — левая шина, справа правая. Между ними горизонтальные цепи, которые называются <strong>звеньями</strong> или сетями (rung, network).</p>
+
+<figure>
+<svg viewBox="0 0 800 280" role="img" aria-label="Устройство цепи в языке Ladder">
+  <!-- шины -->
+  <path d="M60 40 V240" stroke="#8A5522" stroke-width="4" fill="none"/>
+  <path d="M740 40 V240" stroke="#1F5391" stroke-width="4" fill="none"/>
+  <text x="60" y="30" text-anchor="middle" class="txt-s" fill="#8A5522">левая шина</text>
+  <text x="740" y="30" text-anchor="middle" class="txt-s" fill="#1F5391">правая шина</text>
+
+  <!-- сеть 1 -->
+  <text x="72" y="66" class="txt-s">Network 1</text>
+  <path d="M60 100 H150" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M150 88 V112 M162 100 H210" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M210 88 V112" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="180" y="82" text-anchor="middle" class="txt-s">"S1_Pusk"</text>
+  <text x="180" y="130" text-anchor="middle" class="txt-s" fill="#515B54">I0.0</text>
+
+  <path d="M210 100 H300" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M300 88 V112 M312 100 H360" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M360 88 V112" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M298 114 L362 86" stroke="#A32C24" stroke-width="2.5" fill="none"/>
+  <text x="330" y="82" text-anchor="middle" class="txt-s">"S2_Stop"</text>
+  <text x="330" y="130" text-anchor="middle" class="txt-s" fill="#515B54">I0.1</text>
+
+  <path d="M360 100 H620" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <circle cx="636" cy="100" r="15" fill="none" stroke="#1C6B4C" stroke-width="3"/>
+  <text x="636" y="106" text-anchor="middle" class="txt-s" fill="#1C6B4C">( )</text>
+  <path d="M652 100 H740" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="636" y="82" text-anchor="middle" class="txt-s">"KM1_Motor"</text>
+  <text x="636" y="130" text-anchor="middle" class="txt-s" fill="#515B54">Q0.0</text>
+
+  <!-- сеть 2 -->
+  <text x="72" y="176" class="txt-s">Network 2</text>
+  <path d="M60 205 H150" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M150 193 V217 M162 205 H210" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M210 193 V217" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="180" y="187" text-anchor="middle" class="txt-s">"KM1_Motor"</text>
+  <text x="180" y="235" text-anchor="middle" class="txt-s" fill="#515B54">Q0.0</text>
+  <path d="M210 205 H620" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <circle cx="636" cy="205" r="15" fill="none" stroke="#1C6B4C" stroke-width="3"/>
+  <text x="636" y="211" text-anchor="middle" class="txt-s" fill="#1C6B4C">( )</text>
+  <path d="M652 205 H740" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="636" y="187" text-anchor="middle" class="txt-s">"HL1_Rabota"</text>
+  <text x="636" y="235" text-anchor="middle" class="txt-s" fill="#515B54">Q0.1</text>
+</svg>
+<figcaption>Условия читаются слева направо, действие всегда справа. Сети выполняются сверху вниз, одна за другой, каждый цикл.</figcaption>
+</figure>
+
+<h3>Три элемента, из которых состоит любая программа</h3>
+
+<div class="tw">
+<table>
+<tr><th>Элемент</th><th>Обозначение</th><th>Что делает</th></tr>
+<tr><td>Контакт NO</td><td>— | | —</td><td>Пропускает, когда бит = 1. Проверяет условие</td></tr>
+<tr><td>Контакт NC</td><td>— | / | —</td><td>Пропускает, когда бит = 0. Инверсная проверка</td></tr>
+<tr><td>Катушка</td><td>— ( ) —</td><td>Присваивает результат цепи биту. Действие</td></tr>
+</table>
+</div>
+
+<p>Правило без исключений: <strong>условия слева, действие справа</strong>. Катушку нельзя поставить в середину цепи, а контакт — после катушки. Это не прихоть среды разработки, а прямое наследство от электрической схемы, где катушка реле всегда стояла перед нулевым проводом.</p>
+
+<h3>«Ток» в программе</h3>
+
+<p>Про Ladder часто говорят «ток течёт по цепи». Это удобная метафора, но помни: <strong>физического тока там нет</strong>. Контроллер просто вычисляет логическое выражение слева направо и записывает результат в катушку. Никакого напряжения на этих «проводах» не существует, и прозвонить их мультиметром нельзя.</p>
+
+<p>Отсюда вытекает важное отличие от медной схемы: в Ladder «ток» течёт только в одну сторону, слева направо. В реальном шкафу ток может пойти по неожиданному пути через параллельные ветки — это называется паразитной цепью и является классической ошибкой проектирования релейных схем. В программе такое невозможно в принципе.</p>
+
+<h3>Как это выглядит в текстовом виде</h3>
+
+<p>Ту же логику на языке Structured Text записывают одной строкой. Приведу для сравнения — детально ST разберём в третьем томе.</p>
+
+<div class="rung"><b>Ladder:</b>  ─┤ S1_Pusk ├──┤/ S2_Stop ├──────────( KM1_Motor )
+
+<b>ST:</b>      KM1_Motor := S1_Pusk AND NOT S2_Stop;</div>
+
+<p>Одно и то же. Ladder нагляднее для человека со схемой в руках, ST компактнее для сложных вычислений.</p>
+
+<div class="task">
+<span class="lbl">Задание 2</span>
+Нарисуй словами цепь: лампа «Авария» должна гореть, если сработала защита двигателя ИЛИ упало давление, но только когда линия включена в работу. Где будут параллельные ветки, а где последовательные контакты?
+</div>
+
+<!-- ============ ГЛАВА 3 ============ -->
+<h2 id="g3" data-n="Глава 03">Главная ловушка: NC в поле и NC в программе</h2>
+
+<p>Это место, где спотыкаются почти все, кто пришёл в ПЛК из электрики. Ошибка стоит дорого, потому что программа выглядит правильной и даже работает — до первого обрыва провода.</p>
+
+<p>Есть <strong>два разных NC</strong>, и путать их нельзя:</p>
+<ul>
+  <li><strong>NC в поле</strong> — физический нормально замкнутый контакт кнопки или концевика. Это вопрос монтажа.</li>
+  <li><strong>NC в программе</strong> — инверсный контакт в Ladder. Это вопрос логики.</li>
+</ul>
+
+<figure>
+<svg viewBox="0 0 800 330" role="img" aria-label="Четыре комбинации NC в поле и NC в программе">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">КНОПКА «СТОП»: ЧЕТЫРЕ ВАРИАНТА</text>
+
+  <!-- заголовки -->
+  <text x="250" y="58" text-anchor="middle" class="txt-s">в программе контакт NO ─┤ ├─</text>
+  <text x="580" y="58" text-anchor="middle" class="txt-s">в программе контакт NC ─┤/├─</text>
+  <text x="70" y="110" text-anchor="middle" class="txt-s">кнопка</text>
+  <text x="70" y="126" text-anchor="middle" class="txt-s">в поле NO</text>
+  <text x="70" y="240" text-anchor="middle" class="txt-s">кнопка</text>
+  <text x="70" y="256" text-anchor="middle" class="txt-s">в поле NC</text>
+
+  <!-- квадрант 1: NO + NO -->
+  <rect x="130" y="70" width="240" height="105" rx="4" fill="#F6E1DC" stroke="#A32C24" stroke-width="1.5"/>
+  <text x="250" y="98" text-anchor="middle" class="txt-m" fill="#A32C24">РАБОТАЕТ, НО ОПАСНО</text>
+  <text x="250" y="122" text-anchor="middle" class="txt-s">Нажали стоп -> вход 1 -> цепь рвётся</text>
+  <text x="250" y="142" text-anchor="middle" class="txt-s" fill="#A32C24">Обрыв провода -> вход 0 -></text>
+  <text x="250" y="160" text-anchor="middle" class="txt-s" fill="#A32C24">кнопка мертва, никто не знает</text>
+
+  <!-- квадрант 2: NO + NC -->
+  <rect x="460" y="70" width="240" height="105" rx="4" fill="#E3E8DF" stroke="#B5C0B2" stroke-width="1.5"/>
+  <text x="580" y="98" text-anchor="middle" class="txt-m">НЕ РАБОТАЕТ</text>
+  <text x="580" y="122" text-anchor="middle" class="txt-s">В покое вход 0, инверсия даёт 1 —</text>
+  <text x="580" y="142" text-anchor="middle" class="txt-s">мотор пущен. Нажатие стопа</text>
+  <text x="580" y="160" text-anchor="middle" class="txt-s">наоборот разрешает работу</text>
+
+  <!-- квадрант 3: NC + NO -->
+  <rect x="130" y="200" width="240" height="105" rx="4" fill="#E3E8DF" stroke="#B5C0B2" stroke-width="1.5"/>
+  <text x="250" y="228" text-anchor="middle" class="txt-m">НЕ РАБОТАЕТ</text>
+  <text x="250" y="252" text-anchor="middle" class="txt-s">В покое вход 1, контакт NO</text>
+  <text x="250" y="272" text-anchor="middle" class="txt-s">пропускает — стоп никогда</text>
+  <text x="250" y="290" text-anchor="middle" class="txt-s">не срабатывает</text>
+
+  <!-- квадрант 4: NC + NC -->
+  <rect x="460" y="200" width="240" height="105" rx="4" fill="#DDEBE0" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="580" y="228" text-anchor="middle" class="txt-m" fill="#1C6B4C">ПРАВИЛЬНО</text>
+  <text x="580" y="252" text-anchor="middle" class="txt-s" fill="#1C6B4C">Норма: вход 1, цепь замкнута</text>
+  <text x="580" y="272" text-anchor="middle" class="txt-s" fill="#1C6B4C">Нажали: вход 0 -> стоп</text>
+  <text x="580" y="290" text-anchor="middle" class="txt-s" fill="#1C6B4C">Обрыв: вход 0 -> стоп</text>
+</svg>
+<figcaption>Правильный вариант один: кнопка в поле NC и контакт в программе тоже NO по биту, то есть проверяется наличие единицы. Обрыв кабеля при этом останавливает машину.</figcaption>
+</figure>
+
+<h3>Разберём подробно правильный вариант</h3>
+
+<p>Кнопка «Стоп» в поле — нормально замкнутая. Значит, пока её никто не трогает, на вход I0.1 постоянно приходит 24 В и бит равен 1. Чтобы мотор работал, нам нужно условие «бит равен 1», а это обычный контакт NO в программе.</p>
+
+<div class="rung">─┤ S1_Pusk ├──┤ S2_Stop_NC ├─────────( KM1_Motor )
+   I0.0          I0.1                    Q0.0
+
+<b>Норма:</b>   I0.0=0, I0.1=1  ->  мотор стоит, ждём пуска
+<b>Пуск:</b>    I0.0=1, I0.1=1  ->  мотор работает
+<b>Стоп:</b>    I0.0=x, I0.1=0  ->  цепь рвётся, мотор стоит
+<b>Обрыв:</b>   I0.0=x, I0.1=0  ->  цепь рвётся, мотор стоит</div>
+
+<p>Обрати внимание: <strong>в программе нет инверсии</strong>, хотя кнопка называется «Стоп». Инверсию уже сделала физика — нормально замкнутый контакт. Если добавить инверсию ещё и в программе, получится двойное отрицание и логика вывернется наизнанку.</p>
+
+<div class="note danger">
+<span class="lbl">Как это выглядит на объекте</span>
+Наладчик пишет программу дома, на столе, где кнопка «Стоп» подключена через NO-контакт для удобства проверки. Всё работает. На объекте кнопка стоит правильная, NC, и линия отказывается пускаться: программа видит постоянную единицу и считает, что стоп нажат. Начинается поиск несуществующей неисправности в поле. Поэтому первое, что нужно выяснить перед написанием логики, — <strong>какой контакт стоит физически у каждого входа</strong>. Заведи это отдельным столбцом в таблице I/O.
+</div>
+
+<h3>Общее правило</h3>
+<p>Формулируй условия не через названия кнопок, а через состояние битов. Не «если нажат стоп», а «если бит I0.1 равен нулю». Тогда путаницы не возникает: ты работаешь с тем, что реально видит контроллер, а не с тем, как называется железка в поле.</p>
+
+<div class="task">
+<span class="lbl">Задание 3</span>
+Защитный концевик двери ограждения стоит в поле как NC. Нужно, чтобы при открытой двери линия останавливалась и загоралась лампа «Дверь открыта». Какой контакт будет в цепи мотора, а какой — в цепи лампы? Почему они разные?
+</div>
+
+<!-- ============ ГЛАВА 4 ============ -->
+<h2 id="g4" data-n="Глава 04">Пуск-стоп с самоподхватом</h2>
+
+<p>Это самая известная схема в автоматике, и она же — первая настоящая программа, которую пишет каждый. Задача простая: кнопки без фиксации, нажал и отпустил. Мотор должен продолжать работать после того, как палец убрали с кнопки «Пуск».</p>
+
+<h3>Почему без самоподхвата не работает</h3>
+
+<p>Напиши цепь в лоб — и получишь толчковый режим: мотор крутится, только пока держишь кнопку. Отпустил — встал. Это называется режим «толчок» (Jog), и иногда он нужен, но для конвейера это не то.</p>
+
+<div class="rung">─┤ S1_Pusk ├──┤ S2_Stop_NC ├─────────( KM1_Motor )
+
+Отпустил кнопку -> I0.0 = 0 -> цепь разомкнулась -> мотор встал</div>
+
+<p>В релейной схеме эту проблему решали параллельным контактом самого контактора — блок-контактом. В программе делают ровно то же самое: параллельно кнопке ставят контакт того выхода, которым управляем.</p>
+
+<figure>
+<svg viewBox="0 0 800 220" role="img" aria-label="Схема пуск-стоп с самоподхватом">
+  <path d="M50 40 V180" stroke="#8A5522" stroke-width="4" fill="none"/>
+  <path d="M750 40 V180" stroke="#1F5391" stroke-width="4" fill="none"/>
+
+  <!-- основная ветка -->
+  <path d="M50 80 H130" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M130 68 V92 M142 80 H196" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M196 68 V92" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="163" y="60" text-anchor="middle" class="txt-s">"S1_Pusk"  I0.0</text>
+
+  <!-- ветка самоподхвата -->
+  <path d="M90 80 V140 H130" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <path d="M130 128 V152 M142 140 H196" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <path d="M196 128 V152" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <path d="M196 140 H236 V80" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <text x="163" y="172" text-anchor="middle" class="txt-s" fill="#1C6B4C">"KM1_Motor"  Q0.0</text>
+  <text x="163" y="188" text-anchor="middle" class="txt-s" fill="#1C6B4C">контакт самоподхвата</text>
+
+  <path d="M196 80 H236" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M236 80 H330" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+
+  <!-- стоп -->
+  <path d="M330 68 V92 M342 80 H400" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <path d="M400 68 V92" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="365" y="60" text-anchor="middle" class="txt-s">"S2_Stop_NC"  I0.1</text>
+  <path d="M400 80 H620" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <circle cx="638" cy="80" r="15" fill="none" stroke="#1C6B4C" stroke-width="3"/>
+  <text x="638" y="86" text-anchor="middle" class="txt-s" fill="#1C6B4C">( )</text>
+  <path d="M654 80 H750" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="638" y="60" text-anchor="middle" class="txt-s">"KM1_Motor"  Q0.0</text>
+</svg>
+<figcaption>Зелёная ветка — самоподхват. Выход держит сам себя включённым через собственный контакт, пока цепь не разорвёт кнопка «Стоп».</figcaption>
+</figure>
+
+<h3>Разбор по шагам</h3>
+
+<p class="state"><strong>Шаг 0. Исходное состояние.</strong> I0.0 = 0 (пуск не нажат), I0.1 = 1 (стоп не нажат, кнопка NC замкнута), Q0.0 = 0. Обе параллельные ветки разомкнуты, цепь не проходит, мотор стоит.</p>
+
+<p class="state"><strong>Шаг 1. Нажали «Пуск».</strong> I0.0 = 1. Верхняя ветка замкнулась, стоп пропускает, цепь прошла до катушки. Q0.0 = 1, контактор включился, мотор пошёл. Одновременно замкнулся контакт самоподхвата в нижней ветке — но пока он не нужен.</p>
+
+<p class="state"><strong>Шаг 2. Отпустили «Пуск».</strong> I0.0 = 0, верхняя ветка разомкнулась. Но нижняя ветка замкнута, потому что Q0.0 = 1. Цепь проходит через самоподхват, катушка остаётся под током. <strong>Мотор продолжает работать.</strong></p>
+
+<p class="state"><strong>Шаг 3. Нажали «Стоп».</strong> I0.1 = 0, контакт стопа разорвал цепь. Обе параллельные ветки уже не важны — разрыв последовательный. Q0.0 = 0, мотор встал, контакт самоподхвата разомкнулся.</p>
+
+<p class="state"><strong>Шаг 4. Отпустили «Стоп».</strong> I0.1 = 1, цепь снова цела, но Q0.0 = 0 и I0.0 = 0 — обе ветки разомкнуты. Мотор не запускается сам. Система вернулась в исходное состояние.</p>
+
+<div class="note ok">
+<span class="lbl">Почему это работает именно в ПЛК</span>
+Вспомни цикл сканирования из первого тома. Контакт самоподхвата читает <strong>образ выхода</strong>, то есть значение, записанное в предыдущей строке этой же программы. Поскольку катушка Q0.0 стоит в той же цепи выше по порядку выполнения, к следующему циклу её значение уже обновлено. Именно поэтому самоподхват в ПЛК срабатывает без задержки в один цикл — а если бы контакт читал реальную клемму, задержка была бы.
+</div>
+
+<h3>Приоритет стопа</h3>
+
+<p>В приведённой схеме контакт «Стоп» стоит <strong>последовательно после</strong> параллельной группы. Это принципиально: что бы ни происходило с кнопкой пуска и самоподхватом, размыкание стопа рвёт цепь безусловно. Такая схема называется схемой с приоритетом стопа, и для управления механизмами это единственно допустимый вариант.</p>
+
+<p>Если поставить стоп внутрь параллельной группы, получится схема с приоритетом пуска: при одновременном нажатии обеих кнопок мотор продолжит работать. Для механизма это недопустимо.</p>
+
+<div class="note danger">
+<span class="lbl">И снова про аварийный стоп</span>
+Всё, что описано в этой главе, — это <strong>рабочий</strong> стоп. Аварийный грибок в этой цепи не участвует и участвовать не должен: он рвёт питание катушек аппаратно, через реле безопасности, как разбиралось в первом томе. Один вспомогательный контакт грибка можно завести на отдельный вход ПЛК, но только для того, чтобы контроллер вывел сообщение на панель оператора.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 4</span>
+<ol>
+  <li>Что произойдёт, если в схеме самоподхвата поменять местами кнопку «Стоп» и параллельную группу — то есть поставить стоп первым в цепи? Изменится ли поведение?</li>
+  <li>Как переделать схему, чтобы мотор нельзя было запустить, пока не набралось давление в пневмосети? Куда добавится контакт?</li>
+  <li>Пропало и вернулось питание 24 В. Запустится ли мотор сам после восстановления? Обоснуй ответ, вспомнив, где хранится Q0.0.</li>
+</ol>
+</div>
+
+<!-- ============ ГЛАВА 5 ============ -->
+<h2 id="g5" data-n="Глава 05">Set и Reset: второй способ запомнить</h2>
+
+<p>Самоподхват — не единственный способ заставить выход держаться. Есть второй, более явный: команды <strong>Set</strong> (установить) и <strong>Reset</strong> (сбросить). Это как защёлка: одна цепь ставит бит в единицу и на этом её работа заканчивается, другая ставит его в ноль.</p>
+
+<div class="rung">Network 1:  ─┤ S1_Pusk ├──────────────────( <b>S</b> )  KM1_Motor
+
+Network 2:  ─┤/ S2_Stop_NC ├───────────────( <b>R</b> )  KM1_Motor</div>
+
+<p>Читается так: нажали пуск — бит установлен и остаётся установленным, даже когда кнопку отпустили. Сработал стоп — бит сброшен. Между этими событиями контроллер бит не трогает.</p>
+
+<h3>Чем отличается от обычной катушки</h3>
+
+<p>Обычная катушка ( ) присваивает биту результат цепи <strong>каждый цикл</strong>: если цепь разомкнулась, бит немедленно станет нулём. Катушка S записывает единицу только когда цепь замкнута, и не трогает бит, когда цепь разомкнута. Это принципиальная разница.</p>
+
+<div class="tw">
+<table>
+<tr><th>Цепь</th><th>Катушка ( )</th><th>Катушка (S)</th><th>Катушка (R)</th></tr>
+<tr><td>замкнута</td><td>бит := 1</td><td>бит := 1</td><td>бит := 0</td></tr>
+<tr><td>разомкнута</td><td>бит := 0</td><td>бит не меняется</td><td>бит не меняется</td></tr>
+</table>
+</div>
+
+<h3>Что сильнее — Set или Reset</h3>
+
+<p>Здесь возникает вопрос, которого не было в схеме с самоподхватом: а что будет, если обе цепи сработают одновременно? Ответ определяется <strong>порядком строк в программе</strong>, и это прямое следствие цикла сканирования.</p>
+
+<figure>
+<svg viewBox="0 0 800 230" role="img" aria-label="Приоритет Set и Reset в зависимости от порядка строк">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ОБА УСЛОВИЯ ИСТИННЫ ОДНОВРЕМЕННО</text>
+
+  <rect x="30" y="46" width="350" height="160" rx="4" fill="#E3E8DF" stroke="#B5C0B2" stroke-width="1.5"/>
+  <text x="205" y="74" text-anchor="middle" class="txt-m">Сначала S, потом R</text>
+  <text x="50" y="104" class="txt-s">Network 1:  условие -> ( S )  бит := 1</text>
+  <text x="50" y="128" class="txt-s">Network 2:  условие -> ( R )  бит := 0</text>
+  <path d="M50 142 H360" stroke="#B5C0B2" stroke-dasharray="3 3" fill="none"/>
+  <text x="205" y="166" text-anchor="middle" class="txt-m" fill="#1C6B4C">Побеждает RESET</text>
+  <text x="205" y="188" text-anchor="middle" class="txt-s">записан последним, выход = 0</text>
+
+  <rect x="420" y="46" width="350" height="160" rx="4" fill="#F6E1DC" stroke="#A32C24" stroke-width="1.5"/>
+  <text x="595" y="74" text-anchor="middle" class="txt-m">Сначала R, потом S</text>
+  <text x="440" y="104" class="txt-s">Network 1:  условие -> ( R )  бит := 0</text>
+  <text x="440" y="128" class="txt-s">Network 2:  условие -> ( S )  бит := 1</text>
+  <path d="M440 142 H750" stroke="#B5C0B2" stroke-dasharray="3 3" fill="none"/>
+  <text x="595" y="166" text-anchor="middle" class="txt-m" fill="#A32C24">Побеждает SET</text>
+  <text x="595" y="188" text-anchor="middle" class="txt-s">механизм не остановится по стопу</text>
+</svg>
+<figcaption>Побеждает та команда, которая записана в программе ниже — она выполняется последней и перезаписывает результат. Для управления механизмом Reset обязан идти после Set.</figcaption>
+</figure>
+
+<p>Правило простое и жёсткое: <strong>цепь остановки всегда ниже цепи запуска</strong>. Тогда при конфликте машина останавливается, а не продолжает работу. Это тот же принцип безопасного отказа, что и с NC-контактами.</p>
+
+<p>В библиотеках есть готовые блоки <code>SR</code> (приоритет Set) и <code>RS</code> (приоритет Reset). Для управления оборудованием берут <code>RS</code>. Запоминается по последней букве: у RS последняя буква S, но приоритет — у первой, R.</p>
+
+<h3>Когда что применять</h3>
+<div class="tw">
+<table>
+<tr><th>Ситуация</th><th>Чем делать</th><th>Почему</th></tr>
+<tr><td>Пуск-стоп мотора</td><td>Самоподхват</td><td>Вся логика в одной цепи, видно целиком</td></tr>
+<tr><td>Запоминание аварии</td><td>Set / Reset</td><td>Авария взводится в одном месте, квитируется в другом</td></tr>
+<tr><td>Режим «Авто/Ручной»</td><td>Set / Reset</td><td>Два разных источника команды</td></tr>
+<tr><td>Пошаговый цикл машины</td><td>Set / Reset</td><td>Каждый шаг ставит следующий и сбрасывает себя</td></tr>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">Практическая осторожность</span>
+Set и Reset удобны, но опасны при отладке: бит может остаться установленным, а цепь, которая его сбрасывает, находиться на десять экранов ниже. Если один и тот же бит устанавливается и сбрасывается в пяти местах программы, найти причину зависшего состояния будет тяжело. Держи для каждого бита <strong>одну точку Set и одну точку Reset</strong>, а если источников несколько — сначала собери их в промежуточный меркер через ИЛИ.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 5</span>
+Сделай запоминание аварии: при пропадании давления должна взводиться авария, гореть лампа и стоять мотор. Авария снимается только кнопкой «Сброс», причём если давление до сих пор не восстановилось — сброс не должен срабатывать. Опиши цепи и их порядок.
+</div>
+
+<!-- ============ ГЛАВА 6 ============ -->
+<h2 id="g6" data-n="Глава 06">Фронты: поймать момент, а не состояние</h2>
+
+<p>До сих пор мы проверяли <strong>состояние</strong>: включён вход или нет. Но часто нужно поймать именно <strong>момент изменения</strong> — то мгновение, когда сигнал перешёл из нуля в единицу. Это называется фронтом.</p>
+
+<ul>
+  <li><strong>Передний фронт</strong> (нарастающий, P, R_TRIG) — момент перехода 0 → 1</li>
+  <li><strong>Задний фронт</strong> (спадающий, N, F_TRIG) — момент перехода 1 → 0</li>
+</ul>
+
+<p>Детектор фронта выдаёт единицу ровно <strong>на один цикл сканирования</strong>, после чего сам возвращается в ноль, даже если входной сигнал продолжает держаться.</p>
+
+<figure>
+<svg viewBox="0 0 800 250" role="img" aria-label="Временная диаграмма детектора переднего и заднего фронта">
+  <text x="400" y="22" text-anchor="middle" class="txt-hi">ВРЕМЕННАЯ ДИАГРАММА</text>
+
+  <!-- входной сигнал -->
+  <text x="30" y="58" class="txt-s">ВХОД</text>
+  <path d="M100 90 H200 V54 H430 V90 H560 V54 H660 V90 H770" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="315" y="46" text-anchor="middle" class="txt-s">кнопка нажата и держится</text>
+
+  <!-- передний фронт -->
+  <text x="30" y="140" class="txt-s">ФРОНТ P</text>
+  <text x="30" y="156" class="txt-s">0 -> 1</text>
+  <path d="M100 172 H200 V136 H212 V172 H560 V136 H572 V172 H770" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <path d="M200 100 V130" stroke="#1C6B4C" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <path d="M560 100 V130" stroke="#1C6B4C" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <text x="255" y="132" class="txt-s" fill="#1C6B4C">один цикл</text>
+
+  <!-- задний фронт -->
+  <text x="30" y="222" class="txt-s">ФРОНТ N</text>
+  <text x="30" y="238" class="txt-s">1 -> 0</text>
+  <path d="M100 236 H430 V200 H442 V236 H660 V200 H672 V236 H770" stroke="#A87400" stroke-width="2.5" fill="none"/>
+  <path d="M430 100 V196" stroke="#A87400" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <path d="M660 100 V196" stroke="#A87400" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+
+  <text x="400" y="252" text-anchor="middle" class="txt-s">Импульс длится ровно один цикл сканирования — обычно единицы миллисекунд</text>
+</svg>
+<figcaption>Фронт превращает длинное нажатие в короткий импульс. Сколько бы оператор ни держал кнопку, команда выдаётся ровно один раз.</figcaption>
+</figure>
+
+<h3>Зачем это нужно на практике</h3>
+
+<p><strong>Счёт деталей.</strong> Датчик видит ящик на конвейере три секунды. Без фронта счётчик за это время насчитает сотни ящиков — по одному за каждый цикл. С фронтом он прибавит ровно единицу.</p>
+
+<p><strong>Одна кнопка на два действия.</strong> Нажатие переключает состояние: включено → выключено → включено. Без фронта состояние будет переключаться каждый цикл, пока палец на кнопке, и результат окажется случайным.</p>
+
+<p><strong>Квитирование аварий.</strong> Кнопка «Сброс» должна сработать один раз. Если оператор зажал её и держит, аварии не должны сбрасываться непрерывно, маскируя новые.</p>
+
+<p><strong>Пошаговый цикл.</strong> Переход к следующему шагу должен происходить в момент выполнения условия, а не всё время, пока условие истинно.</p>
+
+<h3>Как выглядит в программе</h3>
+
+<div class="rung">Siemens LAD — контакт с буквой P или N в середине:
+
+  ─┤ B1_Datchik ├──┤<b>P</b>├──────────( CU )   счёт ящиков
+                  тег памяти
+                  фронта
+
+CODESYS / IEC — функциональный блок:
+
+  R_TRIG_1( CLK := B1_Datchik );
+  IF R_TRIG_1.Q THEN  Schetchik := Schetchik + 1;  END_IF;</div>
+
+<div class="note">
+<span class="lbl">Про тег памяти фронта</span>
+Детектору фронта нужна собственная ячейка памяти — в ней он хранит состояние сигнала на предыдущем цикле, чтобы было с чем сравнивать. Отсюда железное правило: <strong>у каждого детектора фронта должен быть свой отдельный тег</strong>. Если использовать один и тот же тег в двух местах, оба детектора начнут портить друг другу историю, и фронты будут срабатывать хаотично. Это очень частая и очень неприятная ошибка, потому что проявляется она не сразу.
+</div>
+
+<h3>Тумблер одной кнопкой</h3>
+
+<p>Классическая задача: одна кнопка без фиксации, нажатие включает, следующее нажатие выключает. Собирается из фронта и логики исключающего ИЛИ, но проще и надёжнее — через Set/Reset с двумя условиями:</p>
+
+<div class="rung">Network 1:  ─┤ Knopka ├─┤P├──┤/ Lampa ├────────( S )  Lampa
+Network 2:  ─┤ Knopka ├─┤P├──┤ Lampa ├─────────( R )  Lampa</div>
+
+<p>Первая цепь: пришёл фронт и лампа выключена — включить. Вторая: пришёл фронт и лампа включена — выключить. Порядок строк здесь важен так же, как в предыдущей главе: обе цепи используют один фронт, но условие по состоянию лампы взаимоисключающее, поэтому одновременно они не сработают.</p>
+
+<div class="task">
+<span class="lbl">Задание 6</span>
+Оператор нажимает кнопку «Пуск цикла» и держит её три секунды. Время цикла контроллера 10 мс. Сколько раз сработает цепь без детектора фронта и сколько раз с ним? Посчитай в числах.
+</div>
+
+<!-- ============ ГЛАВА 7 ============ -->
+<h2 id="g7" data-n="Глава 07">Таймеры TON, TOF, TP</h2>
+
+<p>В релейном шкафу таймер был отдельной железкой на рейке, стоил денег и занимал место. В контроллере таймеров столько, сколько нужно, и они бесплатны. Стандарт IEC 61131-3 определяет три типа, и путать их нельзя — это разные инструменты для разных задач.</p>
+
+<figure>
+<svg viewBox="0 0 800 380" role="img" aria-label="Временные диаграммы таймеров TON, TOF, TP">
+  <!-- TON -->
+  <text x="30" y="30" class="txt-hi" fill="#1C6B4C">TON</text>
+  <text x="90" y="30" class="txt-s">задержка ВКЛЮЧЕНИЯ — самый частый</text>
+  <text x="30" y="58" class="txt-s">вход IN</text>
+  <path d="M130 76 H210 V44 H420 V76 H520 V44 H560 V76 H770" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="30" y="112" class="txt-s">выход Q</text>
+  <path d="M130 122 H290 V90 H420 V122 H770" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <path d="M210 44 V130" stroke="#B5C0B2" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <path d="M290 44 V130" stroke="#B5C0B2" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <path d="M210 136 H290" stroke="#A87400" stroke-width="1.5" fill="none"/>
+  <text x="250" y="152" text-anchor="middle" class="txt-s" fill="#A87400">PT</text>
+  <text x="540" y="152" text-anchor="middle" class="txt-s" fill="#A32C24">короткий импульс — не досчитал, Q не включился</text>
+
+  <!-- TOF -->
+  <path d="M20 170 H780" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+  <text x="30" y="198" class="txt-hi" fill="#1F5391">TOF</text>
+  <text x="90" y="198" class="txt-s">задержка ВЫКЛЮЧЕНИЯ</text>
+  <text x="30" y="226" class="txt-s">вход IN</text>
+  <path d="M130 244 H210 V212 H400 V244 H770" stroke="#1E2422" stroke-width="2.5" fill="none"/>
+  <text x="30" y="280" class="txt-s">выход Q</text>
+  <path d="M130 290 H210 V258 H490 V290 H770" stroke="#1F5391" stroke-width="2.5" fill="none"/>
+  <path d="M400 212 V298" stroke="#B5C0B2" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <path d="M490 212 V298" stroke="#B5C0B2" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <path d="M400 304 H490" stroke="#A87400" stroke-width="1.5" fill="none"/>
+  <text x="445" y="320" text-anchor="middle" class="txt-s" fill="#A87400">PT</text>
+  <text x="620" y="278" class="txt-s">выход держится ещё PT после пропадания входа</text>
+
+  <!-- TP -->
+  <path d="M20 332 H780" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+  <text x="30" y="358" class="txt-hi" fill="#A87400">TP</text>
+  <text x="90" y="358" class="txt-s">импульс фиксированной длины — вход может быть любым, выход всегда одинаковый</text>
+</svg>
+<figcaption>TON тянет включение, TOF тянет выключение, TP выдаёт импульс постоянной длительности независимо от входа.</figcaption>
+</figure>
+
+<h3>TON — задержка включения</h3>
+
+<p>Пока вход IN держится, таймер считает. Досчитал до заданного времени PT — выход Q включился. Пропал вход — Q мгновенно выключился и счёт сбросился в ноль.</p>
+
+<p>Ключевое свойство: <strong>если вход пропал раньше, чем истекло время, таймер начинает с нуля</strong>. Никакого накопления между попытками нет. Это как раз то, что нужно для фильтрации помех.</p>
+
+<p><em>Где применяется:</em> задержка пуска двигателя после включения смазки; звуковой сигнал за пять секунд до старта конвейера; фильтрация дребезга датчика — «считать сигнал настоящим, только если он держится дольше 200 мс»; контроль времени выполнения операции — если цилиндр не дошёл до концевика за 3 секунды, выдать аварию.</p>
+
+<h3>TOF — задержка выключения</h3>
+
+<p>Зеркальный вариант. Вход появился — выход включился мгновенно. Вход пропал — выход держится ещё PT, и только потом гаснет.</p>
+
+<p><em>Где применяется:</em> вытяжной вентилятор работает ещё две минуты после остановки процесса; освещение гаснет через минуту после ухода человека; подтверждение того, что деталь действительно ушла из зоны датчика.</p>
+
+<h3>TP — импульс</h3>
+
+<p>При появлении входа выдаёт импульс ровно длиной PT и на дальнейшее поведение входа не реагирует. Держи вход хоть час — импульс будет один и той же длины.</p>
+
+<p><em>Где применяется:</em> толчок пневмоклапана на фиксированное время; короткий гудок при старте; сброс внешнего устройства импульсом.</p>
+
+<h3>Параметры таймера</h3>
+<div class="tw">
+<table>
+<tr><th>Вывод</th><th>Тип</th><th>Назначение</th></tr>
+<tr><td>IN</td><td>BOOL</td><td>Вход запуска — условие, по которому таймер считает</td></tr>
+<tr><td>PT</td><td>TIME</td><td>Заданное время (Preset Time), например T#5s</td></tr>
+<tr><td>Q</td><td>BOOL</td><td>Выход таймера</td></tr>
+<tr><td>ET</td><td>TIME</td><td>Истекшее время (Elapsed Time) — сколько уже отсчитано</td></tr>
+</table>
+</div>
+
+<p>Вывод ET очень полезен и часто игнорируется новичками. Его можно вывести на панель оператора, чтобы человек видел обратный отсчёт, или использовать в логике: например, включить предупреждающий сигнал, когда ET превысил половину PT.</p>
+
+<div class="note danger">
+<span class="lbl">Таймер — не средство синхронизации</span>
+Частая ошибка: «пусть цилиндр выдвигается 2 секунды, этого хватит». Хватит — пока пневмосеть держит давление, пока не износилось уплотнение, пока не холодно. Правильно ловить <strong>концевик</strong>, а таймер использовать только как контроль превышения времени: не дошёл за 3 секунды — авария. Время подтверждает событие, но не заменяет его.
+</div>
+
+<h3>Точность и разрешение</h3>
+<p>Таймер обновляется раз в цикл, поэтому его точность не может быть лучше времени цикла. При цикле 10 мс задать выдержку 5 мс бессмысленно. Для коротких и точных интервалов нужны аппаратные функции контроллера, а не программные таймеры.</p>
+
+<div class="task">
+<span class="lbl">Задание 7</span>
+<ol>
+  <li>Конвейер должен подать звуковой сигнал за 5 секунд до пуска, потом поехать. Какой таймер и как включён?</li>
+  <li>Вытяжка должна работать ещё 2 минуты после остановки линии. Какой таймер?</li>
+  <li>Датчик иногда даёт ложные срабатывания длительностью 50–80 мс. Настоящая деталь перекрывает его минимум на 400 мс. Как отфильтровать помехи одним таймером и на какое время его настроить?</li>
+</ol>
+</div>
+<!-- ============ ГЛАВА 8 ============ -->
+<h2 id="g8" data-n="Глава 08">Счётчики CTU, CTD, CTUD</h2>
+
+<p>Счётчик считает импульсы. Как и таймеры, стандарт определяет три типа.</p>
+
+<div class="tw">
+<table>
+<tr><th>Блок</th><th>Что делает</th><th>Выход</th></tr>
+<tr><td>CTU</td><td>Считает вверх от нуля</td><td>Q = 1, когда CV достиг PV</td></tr>
+<tr><td>CTD</td><td>Считает вниз от загруженного значения</td><td>Q = 1, когда CV дошёл до нуля</td></tr>
+<tr><td>CTUD</td><td>Считает в обе стороны</td><td>Два выхода: QU и QD</td></tr>
+</table>
+</div>
+
+<p>Обозначения выводов: <code>CU</code> — вход счёта вверх, <code>CD</code> — вниз, <code>R</code> — сброс, <code>LD</code> — загрузка начального значения, <code>PV</code> — уставка (Preset Value), <code>CV</code> — текущее значение (Current Value).</p>
+
+<figure>
+<svg viewBox="0 0 800 260" role="img" aria-label="Работа счётчика CTU при счёте ящиков">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">СЧЁТ ЯЩИКОВ, УСТАВКА PV = 5</text>
+
+  <!-- сигнал датчика -->
+  <text x="30" y="60" class="txt-s">ДАТЧИК</text>
+  <path d="M110 84 H150 V56 H185 V84 H235 V56 H270 V84 H320 V56 H355 V84 H405 V56 H440 V84 H490 V56 H525 V84 H770"
+        stroke="#1E2422" stroke-width="2.5" fill="none"/>
+
+  <!-- фронты -->
+  <text x="30" y="122" class="txt-s">ФРОНТ P</text>
+  <g stroke="#1C6B4C" stroke-width="2.5" fill="none">
+    <path d="M110 140 H150 V116 H158 V140 H235 V116 H243 V140 H320 V116 H328 V140 H405 V116 H413 V140 H490 V116 H498 V140 H770"/>
+  </g>
+
+  <!-- значение CV -->
+  <text x="30" y="184" class="txt-s">CV</text>
+  <g class="txt-m" text-anchor="middle" fill="#1E2422">
+    <text x="190" y="184">1</text><text x="275" y="184">2</text><text x="360" y="184">3</text>
+    <text x="445" y="184">4</text><text x="530" y="184">5</text>
+  </g>
+  <path d="M110 194 H770" stroke="#B5C0B2" fill="none"/>
+
+  <!-- выход Q -->
+  <text x="30" y="232" class="txt-s">ВЫХОД Q</text>
+  <path d="M110 240 H498 V210 H770" stroke="#A87400" stroke-width="2.5" fill="none"/>
+  <path d="M498 116 V206" stroke="#A87400" stroke-width="1.2" stroke-dasharray="3 3" fill="none"/>
+  <text x="560" y="204" class="txt-s" fill="#A87400">CV достиг PV -> Q = 1 и остаётся,</text>
+  <text x="560" y="220" class="txt-s" fill="#A87400">пока не придёт сброс R</text>
+</svg>
+<figcaption>Каждый фронт от датчика прибавляет единицу. Счёт продолжается и выше уставки — выход просто остаётся включённым, пока счётчик не сбросят.</figcaption>
+</figure>
+
+<h3>Два правила, без которых счётчик не работает</h3>
+
+<p><strong>Первое: только по фронту.</strong> Если подать на вход CU прямой сигнал датчика, счётчик прибавит по единице за каждый цикл сканирования, пока датчик перекрыт. Ящик, который едет мимо датчика полсекунды при цикле 10 мс, насчитает пятьдесят. Вход счёта всегда идёт через детектор фронта.</p>
+
+<p><strong>Второе: продумай сброс.</strong> Счётчик считает бесконечно и сам не обнуляется. Нужно явно решить, когда его сбрасывать: по кнопке оператора, при старте новой партии, в начале смены, после упаковки коробки. Забытый сброс — причина того, что «счётчик показывает какую-то ерунду».</p>
+
+<h3>Сохранение при отключении питания</h3>
+<p>Если счётчик считает выработку за смену или наработку оборудования, его значение должно пережить отключение питания. Для этого переменную объявляют как <strong>retain</strong> — в первом томе об этой области памяти уже говорилось. Обычный счётчик после перезапуска начнёт с нуля.</p>
+
+<h3>Типичные применения</h3>
+<ul>
+  <li><strong>Упаковка:</strong> насчитали 12 бутылок — закрыть коробку, сбросить счётчик, начать новую.</li>
+  <li><strong>Наработка:</strong> счёт циклов пресса для планового обслуживания. При достижении 100 000 — сообщение «пора менять штамп».</li>
+  <li><strong>Контроль брака:</strong> CTUD — вверх по каждой детали, вниз по каждой отбракованной. Разница показывает годную продукцию.</li>
+  <li><strong>Позиционирование:</strong> счёт импульсов энкодера. Но здесь нужен аппаратный скоростной счётчик HSC, обычный вход импульсы не поймает.</li>
+</ul>
+
+<div class="task">
+<span class="lbl">Задание 8</span>
+Нужно останавливать конвейер после накопления 20 ящиков и включать лампу «Коробка полна». Оператор забирает коробку и нажимает «Готово», после чего счёт начинается заново. Опиши цепи: что на CU, что на R, откуда берётся фронт и где стоит условие остановки конвейера.
+</div>
+
+<!-- ============ ГЛАВА 9 ============ -->
+<h2 id="g9" data-n="Глава 09">Собираем программу конвейера</h2>
+
+<p>Теперь соберём всё изученное в одну работающую программу. Это тот самый конвейер из заданий первого тома.</p>
+
+<h3>Постановка задачи</h3>
+<ul>
+  <li>Конвейер пускается кнопкой «Пуск», останавливается кнопкой «Стоп»</li>
+  <li>Пуск разрешён только при достаточном давлении в пневмосети</li>
+  <li>Перед началом движения — предупредительный сигнал 5 секунд</li>
+  <li>Датчик считает проехавшие ящики</li>
+  <li>После 20 ящиков конвейер останавливается, горит лампа «Коробка полна»</li>
+  <li>Кнопка «Готово» сбрасывает счёт и разрешает продолжение</li>
+  <li>При падении давления во время работы — немедленный останов и авария</li>
+</ul>
+
+<h3>Таблица входов и выходов</h3>
+<div class="tw">
+<table>
+<tr><th>Адрес</th><th>Имя</th><th>Тип</th><th>Контакт</th><th>Описание</th></tr>
+<tr><td>I0.0</td><td>S1_Pusk</td><td>DI</td><td>NO</td><td>Кнопка «Пуск»</td></tr>
+<tr><td>I0.1</td><td>S2_Stop</td><td>DI</td><td>NC</td><td>Кнопка «Стоп»</td></tr>
+<tr><td>I0.2</td><td>S3_Gotovo</td><td>DI</td><td>NO</td><td>Кнопка «Готово», сброс счёта</td></tr>
+<tr><td>I0.3</td><td>B1_Yashik</td><td>DI</td><td>NO</td><td>Датчик наличия ящика</td></tr>
+<tr><td>IW64</td><td>B2_Davlenie</td><td>AI</td><td>—</td><td>Датчик давления 4–20 мА, 0–16 бар</td></tr>
+<tr><td>Q0.0</td><td>KM1_Konveyer</td><td>DO</td><td>—</td><td>Контактор мотора конвейера</td></tr>
+<tr><td>Q0.1</td><td>HL1_Rabota</td><td>DO</td><td>—</td><td>Лампа «Работа»</td></tr>
+<tr><td>Q0.2</td><td>HL2_Korobka</td><td>DO</td><td>—</td><td>Лампа «Коробка полна»</td></tr>
+<tr><td>Q0.3</td><td>HA1_Sirena</td><td>DO</td><td>—</td><td>Предупредительный сигнал</td></tr>
+</table>
+</div>
+
+<h3>Программа по сетям</h3>
+
+<div class="rung"><b>Network 1 — давление в норме</b>
+   Сравнение аналогового значения с порогом.
+
+   B2_Davlenie_bar  >  5.0  ────────────( )  Davlenie_OK</div>
+
+<div class="rung"><b>Network 2 — запрос на пуск с самоподхватом</b>
+   Стоп стоит последовательно и рвёт цепь безусловно.
+
+   ─┤ S1_Pusk ├──────┬──┤ S2_Stop ├──┤ Davlenie_OK ├──┐
+                     │                                │
+   ─┤ Zapros_puska ├─┘                                │
+                        ─┤/ Korobka_polna ├───────────┴──( ) Zapros_puska</div>
+
+<div class="rung"><b>Network 3 — предупредительный сигнал 5 секунд</b>
+   TON стартует вместе с запросом пуска.
+
+   ─┤ Zapros_puska ├─────[ TON  PT := T#5s ]──────( )  Predupr_proshlo
+                                              Q
+   Сирена звучит, пока таймер считает:
+   ─┤ Zapros_puska ├──┤/ Predupr_proshlo ├────────( )  HA1_Sirena</div>
+
+<div class="rung"><b>Network 4 — движение конвейера</b>
+   Едет только после того, как предупреждение отзвучало.
+
+   ─┤ Zapros_puska ├──┤ Predupr_proshlo ├─────────( )  KM1_Konveyer
+   ─┤ KM1_Konveyer ├──────────────────────────────( )  HL1_Rabota</div>
+
+<div class="rung"><b>Network 5 — счёт ящиков</b>
+   Обязательно через фронт, иначе счёт пойдёт по циклам.
+
+   ─┤ B1_Yashik ├──┤P├────────────────[ CTU  PV := 20 ]
+                  тег фронта           CU            Q ──( ) Korobka_polna
+   ─┤ S3_Gotovo ├──┤P├─────────────────R</div>
+
+<div class="rung"><b>Network 6 — лампа «Коробка полна»</b>
+
+   ─┤ Korobka_polna ├─────────────────────────────( )  HL2_Korobka</div>
+
+<div class="rung"><b>Network 7 — авария по давлению</b>
+   Взводится при падении давления во время работы,
+   снимается только кнопкой и только если давление вернулось.
+
+   ─┤ KM1_Konveyer ├──┤/ Davlenie_OK ├────────────( S )  Avariya_davlenie
+   ─┤ S3_Gotovo ├─┤P├──┤ Davlenie_OK ├────────────( R )  Avariya_davlenie</div>
+
+<h3>Почему сети идут именно в таком порядке</h3>
+
+<p>Порядок не случаен. Сначала вычисляются <strong>условия</strong> (давление в норме), затем <strong>решение</strong> (запрос пуска), затем <strong>отработка по времени</strong>, затем <strong>исполнительные механизмы</strong>, и в самом конце — <strong>аварии</strong>. Такая структура читается сверху вниз как рассказ и совпадает с порядком выполнения в цикле сканирования: к моменту, когда программа доходит до включения мотора, все условия уже посчитаны в этом же цикле, а не в предыдущем.</p>
+
+<p>Обрати внимание на сеть 2: контакт <code>Korobka_polna</code> стоит инверсным. Как только счётчик досчитал до 20, условие рвётся и запрос пуска снимается — конвейер встаёт сам, без отдельной цепи остановки. Одна и та же цепь отвечает и за пуск, и за все причины останова. Это правильный подход: чем меньше мест, где выключается механизм, тем легче потом искать причину.</p>
+
+<div class="note ok">
+<span class="lbl">Что бы добавил опытный наладчик</span>
+Эта программа рабочая, но для реального объекта её дополнят: режимом «Авто/Ручной» для наладки, контролем времени (если за 30 секунд ни одного ящика — предупреждение), счётчиком выработки за смену в retain-памяти, обратной связью от контактора (блок-контакт на вход ПЛК — реально ли включился), и текстовыми сообщениями об авариях на панель оператора. Всё это разберём в четвёртом томе.
+</div>
+
+<div class="task">
+<span class="lbl">Итоговое задание тома</span>
+<ol>
+  <li>Оператор нажал «Пуск», через 2 секунды передумал и нажал «Стоп». Что произойдёт с сиреной и с таймером? Разберись, почему.</li>
+  <li>Давление упало ровно в тот момент, когда шла предупредительная сирена. Остановится ли пуск? Проследи по сетям.</li>
+  <li>Добавь в программу требование: конвейер не должен пускаться, если дверь ограждения открыта. Концевик двери в поле — NC. В какую сеть и каким контактом добавится условие?</li>
+  <li>Почему в сети 7 у аварии сначала идёт Set, а потом Reset, а не наоборот?</li>
+</ol>
+</div>
+
+<!-- ============ ГЛАВА 10 ============ -->
+<h2 id="g10" data-n="Глава 10">Типовые ошибки и шпаргалка</h2>
+
+<h3>Десять ошибок, на которых спотыкаются все</h3>
+
+<div class="tw">
+<table>
+<tr><th>Ошибка</th><th>Как проявляется</th><th>Как правильно</th></tr>
+<tr><td>Двойная инверсия стопа</td><td>Линия не пускается вообще</td><td>Кнопка NC в поле — прямой контакт в программе</td></tr>
+<tr><td>Счёт без фронта</td><td>Счётчик набирает сотни за один проход</td><td>Вход CU всегда через детектор фронта</td></tr>
+<tr><td>Один тег на два фронта</td><td>Фронты срабатывают хаотично</td><td>Свой тег памяти каждому детектору</td></tr>
+<tr><td>Reset выше Set</td><td>Механизм не останавливается по стопу</td><td>Цепь останова всегда ниже цепи пуска</td></tr>
+<tr><td>Один выход в двух местах</td><td>Работает то, что ниже; верхнее «не действует»</td><td>Один выход — одна точка записи</td></tr>
+<tr><td>Таймер вместо концевика</td><td>Работает на стенде, сбоит на объекте</td><td>Ловить событие, таймером контролировать превышение</td></tr>
+<tr><td>Стоп внутри параллельной группы</td><td>При двух нажатых кнопках машина едет</td><td>Стоп последовательно, после группы</td></tr>
+<tr><td>Аварийный стоп через программу</td><td>Нарушение норм, опасность для людей</td><td>Аппаратная цепь через реле безопасности</td></tr>
+<tr><td>Забытый сброс счётчика</td><td>«Показывает ерунду» через сутки работы</td><td>Явно определить момент сброса</td></tr>
+<tr><td>Адресация без символьных имён</td><td>Через полгода программу не читает никто</td><td>Теги с именами из электрической схемы</td></tr>
+</table>
+</div>
+
+<h3>Шпаргалка по элементам</h3>
+
+<div class="rung">─┤ ├─      контакт NO      пропускает, когда бит = 1
+─┤/├─      контакт NC      пропускает, когда бит = 0
+─┤P├─      фронт 0 -> 1    импульс на один цикл
+─┤N├─      фронт 1 -> 0    импульс на один цикл
+─( )─      катушка         бит := результат цепи, каждый цикл
+─( S )─    Set             бит := 1, дальше не трогает
+─( R )─    Reset           бит := 0, дальше не трогает
+
+TON   вход держится PT  ->  выход включился     задержка включения
+TOF   вход пропал, ждём PT -> выход выключился  задержка выключения
+TP    импульс ровно PT независимо от входа      формирователь импульса
+
+CTU   считает вверх, Q при CV >= PV
+CTD   считает вниз, Q при CV <= 0
+CTUD  в обе стороны, выходы QU и QD</div>
+
+<h3>Порядок работы над программой</h3>
+<ol>
+  <li><strong>Таблица I/O</strong> с адресами, именами и типом контакта в поле. До единой строчки логики.</li>
+  <li><strong>Условия словами</strong> на бумаге: «мотор работает, если … И … , но НЕ если …».</li>
+  <li><strong>Структура сетей:</strong> условия → решения → таймеры → исполнительные механизмы → аварии.</li>
+  <li><strong>Проверка в симуляторе</strong> до выезда на объект. PLCSIM или CODESYS позволяют прогнать логику без железа.</li>
+  <li><strong>Проверка отказов:</strong> что будет при обрыве каждого провода, при пропадании 24 В, при переходе CPU в STOP.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Мысль напоследок</span>
+Логика в ПЛК — это не программирование в привычном смысле. Это та же релейная схема, которую ты собирал в шкафу, просто перенесённая в память. Всё, что ты знаешь про последовательные и параллельные контакты, про блок-контакты и самоподхват, работает здесь один в один. Новыми оказываются только две вещи: цикл сканирования, из-за которого важен порядок строк, и фронты, которых в медной схеме просто не существовало.
+</div>
+
+<div class="end">
+<p><strong>Конец второго тома.</strong> Дальше — Том 3 «Языки и структура»: полный обзор IEC 61131-3, язык Structured Text, FBD и SFC, блоки OB, FB, FC и DB, организация проекта в TIA Portal и CODESYS, работа с симулятором без покупки железа.</p>
+<p>Перед переходом разбери итоговое задание девятой главы — там собрано всё содержание тома.</p>
+</div>
+
+</div>
+
+</body></html>

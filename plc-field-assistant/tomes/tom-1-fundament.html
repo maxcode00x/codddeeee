@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ПЛК от новичка до профи · Том 1. Фундамент</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:#EFF1EB; --panel-2:#E3E8DF; --rail:#D5DCD1; --line:#B5C0B2;
+  --ink:#1E2422; --dim:#515B54;
+  --brown:#8A5522; --blue:#1F5391; --safety:#A87400; --live:#1C6B4C; --alarm:#A32C24;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--panel);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;line-height:1.65;padding-bottom:80px}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+/* --- обложка --- */
+.cover{min-height:78vh;display:flex;flex-direction:column;justify-content:center;
+  border-bottom:3px solid var(--safety);
+  background:repeating-linear-gradient(135deg,rgba(168,116,0,.09) 0 14px,transparent 14px 28px),
+    radial-gradient(circle at 78% 22%,rgba(28,107,76,.09),transparent 55%),var(--panel-2);
+  padding:70px 0 50px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--safety);margin:0 0 14px}
+.cover h1{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;
+  font-size:clamp(40px,11vw,84px);line-height:.94;letter-spacing:.01em;margin:0;text-transform:uppercase}
+.cover h1 em{font-style:normal;color:var(--safety);display:block}
+.cover .sub{font-size:18px;color:var(--dim);max-width:560px;margin:22px 0 0}
+.tomtag{display:inline-block;border:2px solid var(--safety);color:var(--safety);
+  font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:20px;letter-spacing:.08em;
+  padding:4px 14px;text-transform:uppercase;margin-bottom:26px}
+/* --- оглавление --- */
+.toc{background:var(--panel-2);border:1px solid var(--line);padding:24px;margin:46px 0}
+.toc h2{margin:0 0 14px;font-size:22px;border:0;padding:0}
+.toc h2::before{content:none}
+.toc ol{list-style:none;counter-reset:c;padding:0;margin:0}
+.toc li{counter-increment:c;border-bottom:1px dashed var(--line);padding:9px 0}
+.toc li:last-child{border:0}
+.toc li::before{content:counter(c,decimal-leading-zero);font-family:"IBM Plex Mono",monospace;
+  font-size:12px;color:var(--safety);margin-right:12px}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+.toc a:hover,.toc a:focus{border-bottom-color:var(--safety);color:#141917}
+/* --- типографика --- */
+h2{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:clamp(28px,6vw,38px);
+  text-transform:uppercase;letter-spacing:.02em;margin:70px 0 8px;padding-top:22px;
+  border-top:2px solid var(--line)}
+h2::before{content:attr(data-n);font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--safety);display:block;letter-spacing:.2em;margin-bottom:8px;font-weight:500}
+h3{font-family:"Barlow Condensed",sans-serif;font-size:24px;text-transform:uppercase;
+  letter-spacing:.03em;margin:38px 0 4px}
+h4{font-family:"Barlow Condensed",sans-serif;font-size:19px;letter-spacing:.03em;margin:24px 0 2px;color:var(--safety)}
+p{margin:12px 0}
+strong{color:#141917;font-weight:600}
+ul,ol{padding-left:22px}li{margin:7px 0}
+code{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;padding:2px 6px;
+  border-radius:2px;font-size:.88em;color:var(--safety)}
+/* --- схемы --- */
+figure{margin:28px 0;background:var(--panel-2);border:1px solid var(--line);padding:18px 14px 12px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);line-height:1.55}
+.txt-s{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#515B54;letter-spacing:.04em}
+.txt-m{font-family:"IBM Plex Mono",monospace;font-size:13px;fill:#1E2422}
+.txt-hi{font-family:"Barlow Condensed",sans-serif;font-size:16px;fill:#1E2422;font-weight:600;letter-spacing:.04em}
+/* --- таблицы --- */
+.tw{overflow-x:auto;margin:22px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:460px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--rail);font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  letter-spacing:.06em;font-size:15px;font-weight:600}
+td:first-child{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--safety);white-space:nowrap}
+/* --- врезки --- */
+.note{border-left:3px solid var(--safety);background:var(--panel-2);padding:14px 16px;margin:24px 0}
+.note.danger{border-left-color:var(--alarm)}
+.note.ok{border-left-color:var(--live)}
+.note .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:5px}
+.note.danger .lbl{color:var(--alarm)}.note.ok .lbl{color:var(--live)}
+.formula{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;border:1px solid var(--line);
+  padding:14px 16px;font-size:13.5px;overflow-x:auto;margin:18px 0;color:var(--live);white-space:pre}
+.task{border:1px dashed var(--safety);padding:18px;margin:34px 0;background:rgba(168,116,0,.06)}
+.task .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:8px}
+.gloss dt{font-family:"IBM Plex Mono",monospace;color:var(--safety);font-size:14px;margin-top:14px}
+.gloss dd{margin:2px 0 0;padding-left:0;color:var(--ink)}
+.end{margin-top:70px;padding-top:24px;border-top:2px solid var(--safety);color:var(--dim);font-size:14px}
+@media(max-width:560px){body{font-size:15px}figure{padding:12px 8px 10px}}
+@media(prefers-reduced-motion:no-preference){
+  .pulse{animation:p 2.6s ease-in-out infinite}@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}}
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="wrap">
+    <span class="tomtag">Том 1</span>
+    <p class="eyebrow">ПЛК от новичка до профи · курс для электрика</p>
+    <h1>Фундамент<em>Как работает контроллер</em></h1>
+    <p class="sub">От релейного шкафа к программируемой логике. Архитектура, входы и выходы, цикл сканирования, адресация памяти и электрика шкафа с ПЛК.</p>
+  </div>
+</section>
+
+<div class="wrap">
+
+<div class="toc">
+  <h2>Содержание тома</h2>
+  <ol>
+    <li><a href="#g1">От релейного шкафа к контроллеру</a></li>
+    <li><a href="#g2">Из чего состоит ПЛК</a></li>
+    <li><a href="#g3">Входы и выходы: дискретные</a></li>
+    <li><a href="#g4">Входы и выходы: аналоговые</a></li>
+    <li><a href="#g5">Выходы и подключение нагрузки</a></li>
+    <li><a href="#g6">Цикл сканирования</a></li>
+    <li><a href="#g7">Память и адресация</a></li>
+    <li><a href="#g8">Шкаф с ПЛК и безопасность</a></li>
+    <li><a href="#g9">Словарь терминов</a></li>
+    <li><a href="#gB">Почему эта книга выглядит именно так</a></li>
+  </ol>
+</div>
+
+<!-- ================= ГЛАВА 1 ================= -->
+<h2 id="g1" data-n="Глава 01">От релейного шкафа к контроллеру</h2>
+
+<p>Ты уже умеешь собирать логику. Каждый раз, когда ты соединял контакты последовательно, ты писал условие «И». Когда параллельно — «ИЛИ». Когда брал нормально замкнутый контакт вместо нормально разомкнутого — «НЕ». Разница между тобой и программистом ПЛК только в том, что <strong>твоя логика была из меди, а его — из битов</strong>.</p>
+
+<p>Релейно-контактная схема — это работающая, честная и очень надёжная технология. Но у неё есть предел, и в шестидесятых в него упёрлись автопроизводители. Шкаф управления линией содержал сотни промежуточных реле. Смена модели автомобиля означала переделку монтажа на несколько недель. В 1968 году General Motors написала техзадание на устройство, которое должно было заменить эти шкафы: программируемое, ремонтопригодное, работающее в цеху. Так появился первый ПЛК — Modicon 084.</p>
+
+<h3>Что именно изменилось</h3>
+
+<figure>
+<svg viewBox="0 0 800 330" role="img" aria-label="Сравнение релейной схемы и схемы с ПЛК">
+  <text x="200" y="24" text-anchor="middle" class="txt-hi">РЕЛЕЙНАЯ СХЕМА</text>
+  <text x="600" y="24" text-anchor="middle" class="txt-hi" fill="#A87400">СХЕМА С ПЛК</text>
+  <path d="M400 10 V320" stroke="#B5C0B2" stroke-dasharray="5 5"/ fill="none"/>
+
+  <!-- РЕЛЕ: слева датчики -->
+  <g class="txt-s" fill="#515B54">
+    <text x="30" y="70">кнопки</text><text x="30" y="92">датчики</text>
+  </g>
+  <rect x="25" y="100" width="80" height="150" rx="3" fill="#E3E8DF" stroke="#8A968A"/>
+  <text x="65" y="180" text-anchor="middle" class="txt-s">поле</text>
+  <!-- клубок проводов -->
+  <g stroke="#8A5522" stroke-width="1.6" fill="none" opacity=".9">
+    <path d="M105 120 C160 120 150 200 210 200"/>
+    <path d="M105 140 C170 140 160 130 215 130"/>
+    <path d="M105 165 C150 165 190 240 240 175"/>
+    <path d="M105 190 C170 190 150 110 230 155"/>
+    <path d="M105 215 C160 215 200 160 250 215"/>
+    <path d="M105 235 C150 235 180 190 245 240"/>
+  </g>
+  <!-- реле -->
+  <g fill="#D5DCD1" stroke="#8A968A">
+    <rect x="205" y="115" width="26" height="34" rx="2"/><rect x="240" y="115" width="26" height="34" rx="2"/>
+    <rect x="205" y="160" width="26" height="34" rx="2"/><rect x="240" y="160" width="26" height="34" rx="2"/>
+    <rect x="205" y="205" width="26" height="34" rx="2"/><rect x="240" y="205" width="26" height="34" rx="2"/>
+  </g>
+  <text x="235" y="262" text-anchor="middle" class="txt-s">KA1…KA40</text>
+  <text x="235" y="278" text-anchor="middle" class="txt-s" fill="#A32C24">логика = провода</text>
+  <text x="200" y="308" text-anchor="middle" class="txt-s" fill="#A32C24">изменить → отвёртка, простой линии</text>
+  <path d="M270 180 H320" stroke="#A87400" stroke-width="2.5"/ fill="none"/>
+  <rect x="320" y="160" width="46" height="40" rx="2" fill="#D5DCD1" stroke="#A87400"/>
+  <text x="343" y="185" text-anchor="middle" class="txt-s">KM</text>
+
+  <!-- ПЛК -->
+  <rect x="425" y="100" width="80" height="150" rx="3" fill="#E3E8DF" stroke="#8A968A"/>
+  <text x="465" y="180" text-anchor="middle" class="txt-s">поле</text>
+  <g stroke="#8A5522" stroke-width="1.8" fill="none">
+    <path d="M505 130 H570"/><path d="M505 155 H570"/><path d="M505 180 H570"/>
+    <path d="M505 205 H570"/><path d="M505 230 H570"/>
+  </g>
+  <rect x="570" y="105" width="110" height="145" rx="4" fill="#E3E8DF" stroke="#A87400" stroke-width="2"/>
+  <text x="625" y="132" text-anchor="middle" class="txt-hi">ПЛК</text>
+  <rect x="588" y="145" width="74" height="70" rx="2" fill="#E3E8DF" stroke="#B5C0B2"/>
+  <text x="625" y="172" text-anchor="middle" class="txt-s">логика</text>
+  <text x="625" y="192" text-anchor="middle" class="txt-s" fill="#1C6B4C">= программа</text>
+  <path d="M680 180 H720" stroke="#A87400" stroke-width="2.5"/ fill="none"/>
+  <rect x="720" y="160" width="46" height="40" rx="2" fill="#D5DCD1" stroke="#A87400"/>
+  <text x="743" y="185" text-anchor="middle" class="txt-s">KM</text>
+  <text x="600" y="278" text-anchor="middle" class="txt-s" fill="#1C6B4C">изменить → правка кода, 2 минуты</text>
+  <text x="600" y="308" text-anchor="middle" class="txt-s">проводов только до клемм</text>
+</svg>
+<figcaption>Слева логика физически распаяна между реле. Справа провода идут только «поле → клемма» и «клемма → контактор», а всё, что между ними, живёт в памяти.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<tr><th>Критерий</th><th>Релейная схема</th><th>ПЛК</th></tr>
+<tr><td>Изменение логики</td><td>Переделка монтажа, часы простоя</td><td>Правка программы, минуты, можно удалённо</td></tr>
+<tr><td>Ресурс</td><td>Контакты подгорают, катушки дохнут</td><td>Виртуальные контакты не изнашиваются</td></tr>
+<tr><td>Таймеры</td><td>Отдельная железка за деньги и место на рейке</td><td>Бесплатно, сколько угодно</td></tr>
+<tr><td>Счётчики</td><td>Механические, дорогие</td><td>Бесплатно, до миллиардов</td></tr>
+<tr><td>Диагностика</td><td>Мультиметр и опыт</td><td>Онлайн-мониторинг, текст аварии на HMI</td></tr>
+<tr><td>Связь</td><td>Нет</td><td>PROFINET, PROFIBUS, Modbus, SCADA</td></tr>
+<tr><td>Габариты</td><td>Шкаф 2 м</td><td>Модуль 10 см</td></tr>
+<tr><td>Надёжность при отказе</td><td>Отказывает по одному реле</td><td>Отказ CPU кладёт всё сразу</td></tr>
+<tr><td>Цена малой задачи</td><td>Дешевле на 2–3 реле</td><td>Оправдан от ~10 сигналов</td></tr>
+</table>
+</div>
+
+<p>Обрати внимание на две последние строки. ПЛК не всегда лучше. Управление одним насосом по поплавку релейка сделает дешевле и надёжнее. ПЛК выигрывает там, где логики много и она меняется.</p>
+
+<div class="note danger">
+<span class="lbl">Что осталось железом навсегда</span>
+Автоматы, УЗО, силовые контакторы, тепловые реле и <strong>аварийный стоп</strong>. Грибок не имеет права работать «через программу»: он рвёт цепь питания катушек аппаратно, через реле безопасности или защитный контур Safety-ПЛК. Программа может зависнуть или уйти в STOP — медь не зависает. Это первое, что проверяет инспектор и первое, что спросят у тебя на объекте.
+</div>
+
+<h3>Что физически заменил контроллер</h3>
+<p>Полезно держать в голове точное соответствие. ПЛК заменил <strong>только промежуточные реле, таймеры и счётчики</strong> — то есть слаботочную логическую часть. Всё, что стоит выше по мощности, и всё, что относится к безопасности, осталось на своих местах.</p>
+
+<div class="task">
+<span class="lbl">Проверка</span>
+Условие «мотор пускается, если сработали ОБА датчика» меняем на «если сработал ХОТЯ БЫ ОДИН». Опиши в двух колонках: что делает электрик в релейном шкафу и что делает наладчик с ПЛК. Посчитай примерное время в обоих случаях.
+</div>
+
+<!-- ================= ГЛАВА 2 ================= -->
+<h2 id="g2" data-n="Глава 02">Из чего состоит ПЛК</h2>
+
+<p>Открой любой современный шкаф автоматики — увидишь на DIN-рейке набор модулей, состыкованных боком друг к другу. Это и есть ПЛК в модульном исполнении.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Состав модульного ПЛК на DIN-рейке">
+  <!-- DIN рейка -->
+  <rect x="20" y="205" width="760" height="14" fill="#D5DCD1" stroke="#8A968A"/>
+  <text x="24" y="238" class="txt-s">DIN-рейка 35 мм</text>
+
+  <g stroke="#8A968A" stroke-width="2">
+  <rect x="40" y="70" width="90" height="135" rx="3" fill="#D5DCD1"/>
+  <rect x="135" y="70" width="110" height="135" rx="3" fill="#E3E8DF"/>
+  <rect x="250" y="70" width="85" height="135" rx="3" fill="#E3E8DF"/>
+  <rect x="340" y="70" width="85" height="135" rx="3" fill="#E3E8DF"/>
+  <rect x="430" y="70" width="85" height="135" rx="3" fill="#E3E8DF"/>
+  <rect x="520" y="70" width="85" height="135" rx="3" fill="#E3E8DF"/>
+  <rect x="610" y="70" width="95" height="135" rx="3" fill="#E3E8DF"/>
+  </g>
+
+  <g text-anchor="middle">
+    <text x="85" y="96" class="txt-hi" font-size="13">PS</text>
+    <text x="85" y="118" class="txt-s">блок</text><text x="85" y="132" class="txt-s">питания</text>
+    <text x="85" y="156" class="txt-s" fill="#8A5522">230 В →</text>
+    <text x="85" y="172" class="txt-s" fill="#8A5522">24 В DC</text>
+
+    <text x="190" y="96" class="txt-hi" font-size="13" fill="#A87400">CPU</text>
+    <text x="190" y="118" class="txt-s">процессор</text>
+    <text x="190" y="134" class="txt-s">+ память</text>
+    <text x="190" y="156" class="txt-s">выполняет</text>
+    <text x="190" y="170" class="txt-s">программу</text>
+
+    <text x="292" y="96" class="txt-hi" font-size="13">DI</text>
+    <text x="292" y="118" class="txt-s">16 вх.</text><text x="292" y="134" class="txt-s">24 В DC</text>
+    <text x="382" y="96" class="txt-hi" font-size="13">DO</text>
+    <text x="382" y="118" class="txt-s">16 вых.</text><text x="382" y="134" class="txt-s">транз.</text>
+    <text x="472" y="96" class="txt-hi" font-size="13">AI</text>
+    <text x="472" y="118" class="txt-s">4 вх.</text><text x="472" y="134" class="txt-s">4–20 мА</text>
+    <text x="562" y="96" class="txt-hi" font-size="13">AO</text>
+    <text x="562" y="118" class="txt-s">2 вых.</text><text x="562" y="134" class="txt-s">0–10 В</text>
+    <text x="657" y="96" class="txt-hi" font-size="13">CM</text>
+    <text x="657" y="118" class="txt-s">связь</text>
+    <text x="657" y="134" class="txt-s">PROFINET</text>
+  </g>
+
+  <!-- клеммы -->
+  <g fill="#A87400">
+    <circle cx="270" cy="192" r="2.6"/><circle cx="282" cy="192" r="2.6"/><circle cx="294" cy="192" r="2.6"/><circle cx="306" cy="192" r="2.6"/>
+    <circle cx="360" cy="192" r="2.6"/><circle cx="372" cy="192" r="2.6"/><circle cx="384" cy="192" r="2.6"/><circle cx="396" cy="192" r="2.6"/>
+    <circle cx="450" cy="192" r="2.6"/><circle cx="462" cy="192" r="2.6"/><circle cx="474" cy="192" r="2.6"/>
+    <circle cx="540" cy="192" r="2.6"/><circle cx="552" cy="192" r="2.6"/>
+  </g>
+
+  <!-- шина -->
+  <path d="M135 60 H705" stroke="#1C6B4C" stroke-width="3"/ fill="none"/>
+  <text x="420" y="50" text-anchor="middle" class="txt-s" fill="#1C6B4C">ВНУТРЕННЯЯ ШИНА — обмен данными между модулями</text>
+
+  <text x="400" y="270" text-anchor="middle" class="txt-s">Модульная стойка наращивается по мере надобности: не хватило входов — добавил модуль DI</text>
+  <text x="400" y="288" text-anchor="middle" class="txt-s">Компактный ПЛК (S7-1200, ОВЕН ПЛК110) — то же самое в одном корпусе</text>
+</svg>
+<figcaption>Питание, процессор, модули ввода-вывода, модуль связи. У компактных контроллеров всё это в одной коробке, у модульных — набирается под задачу.</figcaption>
+</figure>
+
+<h3>CPU: что там внутри</h3>
+<ul>
+  <li><strong>Процессор</strong> — выполняет программу. Время цикла у современных контроллеров 1–20 мс.</li>
+  <li><strong>Рабочая память (RAM)</strong> — здесь живёт исполняемая программа и текущие значения переменных. Пропало питание — очистилась.</li>
+  <li><strong>Загрузочная память (Load memory)</strong> — энергонезависимая, чаще карта памяти. Там хранится проект целиком, включая комментарии и символьные имена. При включении оттуда всё загружается в RAM.</li>
+  <li><strong>Retain-память</strong> — небольшая энергонезависимая область для переменных, которые обязаны пережить отключение: счётчики выработки, наработка моточасов, последний режим.</li>
+</ul>
+
+<div class="note ok">
+<span class="lbl">Практика</span>
+Карта памяти у Siemens S7-1200/1500 — это не «флешка для удобства», а часть контроллера. Без неё программа в некоторых конфигурациях не стартует. При замене сгоревшего CPU карту переставляют в новый, и линия поднимается без ноутбука и без пароля от проекта. Всегда уточняй на объекте, где лежит резервная копия проекта.
+</div>
+
+<h3>Режимы работы CPU</h3>
+<div class="tw">
+<table>
+<tr><th>Режим</th><th>Что происходит</th><th>Состояние выходов</th></tr>
+<tr><td>RUN</td><td>Программа выполняется циклически</td><td>Управляются программой</td></tr>
+<tr><td>STOP</td><td>Программа не выполняется</td><td>Сбрасываются в 0 (безопасное состояние)</td></tr>
+<tr><td>STARTUP</td><td>Однократная инициализация после включения</td><td>Ещё не активны</td></tr>
+<tr><td>DEFECT / SF</td><td>Аппаратная или системная ошибка</td><td>Сброшены, горит красный светодиод</td></tr>
+</table>
+</div>
+
+<p>Светодиоды на лицевой панели — твой первый инструмент диагностики, ещё до ноутбука. Зелёный RUN — работает. Жёлтый STOP — стоит. Красный ERROR/SF — ошибка. Мигающий по очереди — идёт загрузка или сброс.</p>
+
+<h3>Компактный, модульный, распределённый</h3>
+<ul>
+  <li><strong>Компактный (моноблок)</strong> — CPU и I/O в одном корпусе. S7-1200, ОВЕН ПЛК110, Logo!. Дёшево, для машин и небольших установок.</li>
+  <li><strong>Модульный</strong> — стойка с набором модулей. S7-1500, S7-300/400. Для линий и цехов.</li>
+  <li><strong>Распределённый ввод-вывод</strong> — CPU в главном шкафу, а станции ET200 стоят прямо у оборудования и связаны с ним по PROFINET одной витой парой. Это то, что ты видел на VW: вместо ста кабелей через весь цех — один сетевой.</li>
+</ul>
+
+<div class="task">
+<span class="lbl">Проверка</span>
+Контроллер ушёл в STOP посреди смены. Что произойдёт с мотором конвейера, который был включён? Почему это спроектировано именно так? И что произойдёт с пневмоцилиндром, если клапан пятилинейный с пружинным возвратом?
+</div>
+
+<!-- ================= ГЛАВА 3 ================= -->
+<h2 id="g3" data-n="Глава 03">Входы и выходы: дискретные</h2>
+
+<p>Дискретный вход (DI) отвечает на один вопрос: <strong>есть ли на клемме напряжение около 24 В?</strong> Есть — бит равен 1. Нет — 0.</p>
+
+<figure>
+<svg viewBox="0 0 800 230" role="img" aria-label="Подключение кнопки к дискретному входу">
+  <path d="M60 40 H740" stroke="#8A5522" stroke-width="3"/ fill="none"/>
+  <text x="60" y="30" class="txt-m" fill="#8A5522">+24 В</text>
+  <path d="M60 205 H740" stroke="#1F5391" stroke-width="3"/ fill="none"/>
+  <text x="60" y="228" class="txt-m" fill="#1F5391">0 В (M)</text>
+
+  <path d="M180 40 V80" stroke="#8A5522" stroke-width="2.5"/ fill="none"/>
+  <circle cx="180" cy="83" r="3.5" fill="#8A5522"/>
+  <path d="M180 106 L212 88" stroke="#1E2422" stroke-width="2.5"/ fill="none"/>
+  <circle cx="180" cy="108" r="3.5" fill="#1E2422"/>
+  <path d="M180 108 V155 H420" stroke="#1E2422" stroke-width="2.5"/ fill="none"/>
+  <text x="150" y="100" text-anchor="end" class="txt-m">S1 «Пуск»</text>
+  <text x="150" y="118" text-anchor="end" class="txt-s">контакт NO</text>
+
+  <rect x="420" y="95" width="240" height="100" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="540" y="120" text-anchor="middle" class="txt-hi">МОДУЛЬ ВХОДОВ</text>
+  <circle cx="420" cy="155" r="6" fill="#EFF1EB" stroke="#1E2422" stroke-width="2"/>
+  <text x="437" y="150" class="txt-s">клемма I0.0</text>
+  <rect x="475" y="138" width="58" height="34" rx="3" fill="#DCE2D8" stroke="#B5C0B2"/>
+  <text x="504" y="159" text-anchor="middle" class="txt-s">оптрон</text>
+  <path d="M533 155 H575" stroke="#1C6B4C" stroke-width="2"/ fill="none"/>
+  <text x="612" y="151" text-anchor="middle" class="txt-m" fill="#1C6B4C">бит I0.0 = 1</text>
+  <text x="612" y="168" text-anchor="middle" class="txt-s">в памяти CPU</text>
+  <path d="M540 195 V205" stroke="#1F5391" stroke-width="2.5"/ fill="none"/>
+  <text x="552" y="202" class="txt-s">общая клемма</text>
+</svg>
+<figcaption>Кнопка ничего не «сообщает». Она просто пропускает +24 В на клемму, а модуль это замечает и поднимает бит.</figcaption>
+</figure>
+
+<h3>Пороги и «серая зона»</h3>
+<p>Для входов типа 1 по IEC 61131-2:</p>
+<ul>
+  <li>от <strong>−3 до +5 В</strong> — гарантированный <strong>0</strong></li>
+  <li>от <strong>+15 до +30 В</strong> — гарантированная <strong>1</strong></li>
+  <li>от 5 до 15 В — состояние не определено</li>
+</ul>
+<p>Отсюда все «мистические» неисправности: наводка на длинном кабеле рядом с силовым, окислившийся контакт концевика, влажная клеммная коробка. Вход попадает в серую зону и начинает дребезжать. Лечится экранированным кабелем, раздельной прокладкой силовых и сигнальных трасс и программным фильтром (в TIA Portal время фильтрации входа настраивается прямо в свойствах модуля).</p>
+
+<h3>NO и NC: правило безопасного отказа</h3>
+
+<figure>
+<svg viewBox="0 0 800 240" role="img" aria-label="Почему кнопка Стоп подключается нормально замкнутым контактом">
+  <rect x="20" y="16" width="370" height="205" rx="4" fill="#DDEBE0" stroke="#1C6B4C" stroke-width="1.5"/>
+  <text x="205" y="44" text-anchor="middle" class="txt-hi" fill="#1C6B4C">ПРАВИЛЬНО · NC</text>
+  <text x="205" y="66" text-anchor="middle" class="txt-s">кнопка «Стоп» замкнута в покое</text>
+  <text x="45" y="98" class="txt-m">Норма:</text><text x="180" y="98" class="txt-m" fill="#1C6B4C">вход = 1 → работа разрешена</text>
+  <text x="45" y="128" class="txt-m">Нажали:</text><text x="180" y="128" class="txt-m">вход = 0 → стоп</text>
+  <text x="45" y="158" class="txt-m">Обрыв:</text><text x="180" y="158" class="txt-m" fill="#1C6B4C">вход = 0 → стоп</text>
+  <text x="205" y="196" text-anchor="middle" class="txt-s" fill="#1C6B4C">Любая неисправность останавливает машину</text>
+
+  <rect x="410" y="16" width="370" height="205" rx="4" fill="#F6E1DC" stroke="#A32C24" stroke-width="1.5"/>
+  <text x="595" y="44" text-anchor="middle" class="txt-hi" fill="#A32C24">ОПАСНО · NO</text>
+  <text x="595" y="66" text-anchor="middle" class="txt-s">кнопка «Стоп» разомкнута в покое</text>
+  <text x="435" y="98" class="txt-m">Норма:</text><text x="570" y="98" class="txt-m">вход = 0</text>
+  <text x="435" y="128" class="txt-m">Нажали:</text><text x="570" y="128" class="txt-m">вход = 1 → стоп</text>
+  <text x="435" y="158" class="txt-m">Обрыв:</text><text x="570" y="158" class="txt-m" fill="#A32C24">вход = 0 → «всё нормально»</text>
+  <text x="595" y="196" text-anchor="middle" class="txt-s pulse" fill="#A32C24">Кнопка «Стоп» мертва, никто не знает</text>
+</svg>
+<figcaption>Принцип fail-safe: неисправность должна приводить систему в безопасное состояние, а не маскироваться под норму. Стоп, аварийные цепи, защитные концевики — всегда NC.</figcaption>
+</figure>
+
+<h3>PNP и NPN</h3>
+
+<p>У трёхпроводного датчика коричневый — +24 В, синий — 0 В, чёрный — сигнал. Разница только в том, что датчик делает с чёрным проводом при срабатывании.</p>
+
+<figure>
+<svg viewBox="0 0 800 290" role="img" aria-label="Сравнение датчиков PNP и NPN">
+  <text x="200" y="24" text-anchor="middle" class="txt-hi">PNP · плюсовая логика</text>
+  <text x="200" y="44" text-anchor="middle" class="txt-s">Европа, Siemens, автопром — стандарт</text>
+  <path d="M40 66 H360" stroke="#8A5522" stroke-width="3"/ fill="none"/>
+  <text x="40" y="60" class="txt-s" fill="#8A5522">+24 В</text>
+  <path d="M40 252 H360" stroke="#1F5391" stroke-width="3"/ fill="none"/>
+  <text x="40" y="272" class="txt-s" fill="#1F5391">0 В</text>
+  <rect x="85" y="102" width="90" height="86" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="130" y="138" text-anchor="middle" class="txt-s">ДАТЧИК</text><text x="130" y="158" text-anchor="middle" class="txt-s">PNP</text>
+  <path d="M105 66 V102" stroke="#8A5522" stroke-width="2.5"/ fill="none"/>
+  <path d="M155 188 V252" stroke="#1F5391" stroke-width="2.5"/ fill="none"/>
+  <path d="M175 145 H240" stroke="#1E2422" stroke-width="2.5"/ fill="none"/>
+  <text x="207" y="136" text-anchor="middle" class="txt-s" fill="#1C6B4C">даёт +24 В</text>
+  <rect x="240" y="118" width="80" height="56" rx="3" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="280" y="142" text-anchor="middle" class="txt-s">вход</text><text x="280" y="160" text-anchor="middle" class="txt-s">ПЛК</text>
+  <path d="M280 174 V252" stroke="#1F5391" stroke-width="2.5"/ fill="none"/>
+  <text x="290" y="212" class="txt-s">общая клемма = минус</text>
+
+  <path d="M400 16 V275" stroke="#B5C0B2" stroke-dasharray="5 5"/ fill="none"/>
+
+  <text x="600" y="24" text-anchor="middle" class="txt-hi">NPN · минусовая логика</text>
+  <text x="600" y="44" text-anchor="middle" class="txt-s">Азия, старое оборудование</text>
+  <path d="M440 66 H760" stroke="#8A5522" stroke-width="3"/ fill="none"/>
+  <text x="440" y="60" class="txt-s" fill="#8A5522">+24 В</text>
+  <path d="M440 252 H760" stroke="#1F5391" stroke-width="3"/ fill="none"/>
+  <text x="440" y="272" class="txt-s" fill="#1F5391">0 В</text>
+  <rect x="485" y="102" width="90" height="86" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="530" y="138" text-anchor="middle" class="txt-s">ДАТЧИК</text><text x="530" y="158" text-anchor="middle" class="txt-s">NPN</text>
+  <path d="M505 66 V102" stroke="#8A5522" stroke-width="2.5"/ fill="none"/>
+  <path d="M555 188 V252" stroke="#1F5391" stroke-width="2.5"/ fill="none"/>
+  <path d="M575 145 H640" stroke="#1E2422" stroke-width="2.5"/ fill="none"/>
+  <text x="607" y="136" text-anchor="middle" class="txt-s" fill="#1F5391">тянет к 0 В</text>
+  <rect x="640" y="118" width="80" height="56" rx="3" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="680" y="142" text-anchor="middle" class="txt-s">вход</text><text x="680" y="160" text-anchor="middle" class="txt-s">ПЛК</text>
+  <path d="M680 118 V66" stroke="#8A5522" stroke-width="2.5"/ fill="none"/>
+  <text x="692" y="96" class="txt-s">общая клемма = плюс</text>
+</svg>
+<figcaption>Тип датчика определяет, куда сажается общая клемма модуля входов. Перепутал — вход либо мёртвый, либо постоянно в единице, а в худшем случае выгорает оптрон.</figcaption>
+</figure>
+
+<p>Запоминается просто: <strong>PNP = Positive, датчик выдаёт плюс</strong>. Тип написан на корпусе датчика и в даташите — смотри до подключения. Существуют переходные реле и модули с переключаемой полярностью, но проще заказать правильный датчик.</p>
+
+<div class="task">
+<span class="lbl">Проверка</span>
+1. Почему защитный концевик двери ограждения делают NC, а кнопку «Пуск» — NO? 2. Датчик NPN подключили к модулю, у которого общая клемма на минусе. Что увидит наладчик в онлайн-мониторинге?
+</div>
+
+<!-- ================= ГЛАВА 4 ================= -->
+<h2 id="g4" data-n="Глава 04">Входы и выходы: аналоговые</h2>
+
+<p>Дискретный вход отвечает «есть ящик / нет ящика». Аналоговый отвечает «сколько бар, градусов, литров в минуту, процентов». Внутри модуля стоит <strong>АЦП</strong>, который превращает ток или напряжение в целое число.</p>
+
+<figure>
+<svg viewBox="0 0 800 250" role="img" aria-label="Преобразование 4-20 мА в число и в физическую величину">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ТРИ ЭТАЖА ОДНОГО СИГНАЛА</text>
+  <text x="40" y="66" class="txt-s">1 · ТОК В ПЕТЛЕ</text>
+  <rect x="40" y="76" width="720" height="26" rx="3" fill="#DCE2D8" stroke="#B5C0B2"/>
+  <rect x="40" y="76" width="720" height="26" rx="3" fill="url(#g1)" opacity=".45"/>
+  <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#1F5391"/><stop offset="1" stop-color="#A32C24"/></linearGradient>
+  <marker id="ar" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#A87400"/></marker></defs>
+  <text x="52" y="94" class="txt-m">4 мА</text><text x="380" y="94" class="txt-m">12 мА</text><text x="700" y="94" class="txt-m">20 мА</text>
+
+  <path d="M400 106 V128" stroke="#A87400" stroke-width="2" marker-end="url(#ar)"/ fill="none"/>
+  <text x="414" y="123" class="txt-s" fill="#A87400">АЦП модуля</text>
+
+  <text x="40" y="148" class="txt-s">2 · СЫРОЕ ЧИСЛО В ПАМЯТИ</text>
+  <rect x="40" y="158" width="720" height="26" rx="3" fill="#DCE2D8" stroke="#B5C0B2"/>
+  <text x="52" y="176" class="txt-m">0</text><text x="376" y="176" class="txt-m">13824</text><text x="686" y="176" class="txt-m">27648</text>
+
+  <path d="M400 188 V208" stroke="#A87400" stroke-width="2" marker-end="url(#ar)"/ fill="none"/>
+  <text x="414" y="204" class="txt-s" fill="#A87400">NORM_X + SCALE_X в программе</text>
+
+  <text x="40" y="228" class="txt-s">3 · ВЕЛИЧИНА НА ЭКРАНЕ HMI</text>
+  <rect x="40" y="234" width="720" height="14" rx="3" fill="#DCE2D8" stroke="#B5C0B2"/>
+  <text x="52" y="245" class="txt-s">0 бар</text><text x="380" y="245" class="txt-s" fill="#1C6B4C">5 бар</text><text x="708" y="245" class="txt-s">10 бар</text>
+</svg>
+<figcaption>Ток в кабеле → сырое число АЦП → понятная величина. Диапазон 0…27648 — стандарт Siemens; у других производителей числа другие, принцип тот же.</figcaption>
+</figure>
+
+<div class="formula">Величина = (I − 4 мА) / (20 мА − 4 мА) × Диапазон датчика
+
+Пример: датчик 0–10 бар, пришло 12 мА
+(12 − 4) / 16 × 10 = 0,5 × 10 = 5 бар
+
+Обратная задача: нужно 7,5 бар — какой ток?
+4 + (7,5 / 10) × 16 = 4 + 12 = 16 мА</div>
+
+<h3>Почему 4–20 мА, а не 0–10 В</h3>
+<ol>
+  <li><strong>Живой ноль.</strong> Исправный датчик никогда не выдаёт 0 мА. Пришло меньше 3,6 мА — значит обрыв кабеля или сдох датчик, и контроллер поднимает аварию. Датчик 0–10 В при обрыве покажет честный ноль, неотличимый от «нет давления».</li>
+  <li><strong>Ток не проседает.</strong> В токовой петле сила тока одинакова по всей длине, сопротивление жил не влияет. Сигнал 0–10 В на ста метрах просядет из-за падения напряжения.</li>
+  <li><strong>Помехоустойчивость.</strong> Низкоомная токовая цепь меньше ловит наводки от силовых кабелей и частотников.</li>
+</ol>
+
+<h3>Двух-, трёх- и четырёхпроводные датчики</h3>
+<div class="tw">
+<table>
+<tr><th>Схема</th><th>Как работает</th><th>Где встречается</th></tr>
+<tr><td>2-проводная</td><td>Питание и сигнал по одной паре. Датчик «подъедает» ток из петли, модуль питает петлю</td><td>Датчики давления, уровня — самая частая</td></tr>
+<tr><td>3-проводная</td><td>+24 В, 0 В, сигнальный. Питание отдельно</td><td>Датчики с дисплеем, преобразователи</td></tr>
+<tr><td>4-проводная</td><td>Отдельно питание и отдельно полностью изолированная петля сигнала</td><td>Точные измерения, гальваническая развязка</td></tr>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">Ошибка новичка на монтаже</span>
+Двухпроводный датчик 4–20 мА нельзя подключать в режиме входа с внешним питанием без учёта того, кто питает петлю. Если и модуль, и внешний БП питают петлю одновременно — получишь либо зашкал, либо выгоревший канал. В даташите модуля всегда есть две схемы: «активный вход» (питает модуль) и «пассивный вход» (питает внешний источник). Сверяйся с ней.
+</div>
+
+<h3>Разрешение и точность</h3>
+<p>Модуль с разрешением 12 бит даёт 4096 градаций. На диапазоне 0–10 бар это шаг около 0,0024 бар — с запасом. Но точность ограничена не разрядностью, а погрешностью самого датчика (обычно 0,5–1 %) и наводками. Гнаться за 16-битным модулем при датчике с погрешностью 1 % бессмысленно.</p>
+
+<div class="task">
+<span class="lbl">Проверка</span>
+Датчик температуры 4–20 мА, диапазон −20…+80 °C. Пришло 8 мА. Сколько градусов? Подсказка: диапазон здесь не 80, а 100 градусов, и он начинается не с нуля.
+</div>
+
+<!-- ================= ГЛАВА 5 ================= -->
+<h2 id="g5" data-n="Глава 05">Выходы и подключение нагрузки</h2>
+
+<div class="tw">
+<table>
+<tr><th>Параметр</th><th>Релейный выход</th><th>Транзисторный выход</th></tr>
+<tr><td>Напряжение</td><td>AC и DC, до 230 В</td><td>Только 24 В DC</td></tr>
+<tr><td>Ток на канал</td><td>до ~2 А</td><td>~0,5 А</td></tr>
+<tr><td>Скорость</td><td>~10 мс</td><td>микросекунды</td></tr>
+<tr><td>Ресурс</td><td>Ограничен, контакты выгорают</td><td>Практически неограничен</td></tr>
+<tr><td>Гальваническая развязка</td><td>Полная, контактом</td><td>Оптронная</td></tr>
+<tr><td>Применение</td><td>Редкие переключения, разные напряжения</td><td>ШИМ, шаговые, быстрые клапаны</td></tr>
+</table>
+</div>
+
+<figure>
+<svg viewBox="0 0 800 190" role="img" aria-label="Цепочка от выхода ПЛК до двигателя">
+  <rect x="15" y="55" width="150" height="70" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="90" y="84" text-anchor="middle" class="txt-hi">ВЫХОД ПЛК</text>
+  <text x="90" y="106" text-anchor="middle" class="txt-s">24 В · 0,5 А</text>
+  <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="5" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#1C6B4C"/></marker>
+  <marker id="a3" markerWidth="9" markerHeight="9" refX="5" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#A87400"/></marker></defs>
+  <path d="M165 90 H212" stroke="#1C6B4C" stroke-width="3" marker-end="url(#a2)"/ fill="none"/>
+  <rect x="218" y="55" width="160" height="70" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="298" y="84" text-anchor="middle" class="txt-hi">ПРОМ. РЕЛЕ</text>
+  <text x="298" y="106" text-anchor="middle" class="txt-s">развязка, 24 В DC</text>
+  <path d="M378 90 H425" stroke="#1C6B4C" stroke-width="3" marker-end="url(#a2)"/ fill="none"/>
+  <rect x="431" y="55" width="160" height="70" rx="4" fill="#E3E8DF" stroke="#A87400" stroke-width="2"/>
+  <text x="511" y="84" text-anchor="middle" class="txt-hi">КОНТАКТОР</text>
+  <text x="511" y="106" text-anchor="middle" class="txt-s">силовые контакты</text>
+  <path d="M591 90 H638" stroke="#A87400" stroke-width="3" marker-end="url(#a3)"/ fill="none"/>
+  <rect x="644" y="55" width="140" height="70" rx="4" fill="#D5DCD1" stroke="#A87400" stroke-width="2"/>
+  <text x="714" y="84" text-anchor="middle" class="txt-hi">ДВИГАТЕЛЬ</text>
+  <text x="714" y="106" text-anchor="middle" class="txt-s">400 В · 3~</text>
+  <path d="M410 25 V165" stroke="#B5C0B2" stroke-dasharray="4 4"/ fill="none"/>
+  <text x="200" y="158" text-anchor="middle" class="txt-s">слаботочная часть</text>
+  <text x="620" y="158" text-anchor="middle" class="txt-s" fill="#A87400">силовая часть</text>
+</svg>
+<figcaption>ПЛК командует, контактор коммутирует. Сгоревший контактор — 200 злотых и десять минут. Сгоревший модуль выходов — совсем другой разговор.</figcaption>
+</figure>
+
+<div class="note danger">
+<span class="lbl">Индуктивная нагрузка убивает выходы</span>
+Катушка реле, контактора или клапана при отключении выдаёт всплеск обратного напряжения — самоиндукцию, сотни вольт. Для транзисторного выхода это смерть. На катушки DC ставится <strong>обратный диод</strong> параллельно катушке (полосой к плюсу), на AC — RC-цепочка или варистор. Многие фирменные реле и клапаны идут с встроенным гасящим элементом, но проверять надо самому.
+</div>
+
+<h3>Аналоговые выходы</h3>
+<p>AO нужен, когда надо задать величину, а не факт: задание частоты для частотника, положение регулирующего клапана, уставка на регулятор. Те же 0–10 В или 4–20 мА, только в обратную сторону. Число в памяти 0…27648 превращается ЦАПом в сигнал.</p>
+<p>На практике задание частотнику всё чаще идёт не аналогом, а по сети — PROFINET или Modbus. Провода не нужны вовсе, зато можно читать обратно ток двигателя, обороты, аварии и наработку. Про это будет отдельная глава в четвёртом томе.</p>
+
+<!-- ================= ГЛАВА 6 ================= -->
+<h2 id="g6" data-n="Глава 06">Цикл сканирования</h2>
+
+<p>Это самая важная глава тома. Здесь лежит корень половины ошибок начинающих.</p>
+
+<p>Главное отличие ПЛК от релейной схемы: <strong>релейная схема работает мгновенно и параллельно, ПЛК — по кругу и последовательно</strong>. В релейке замкнулся контакт — ток пошёл в ту же миллисекунду, и все цепи живут одновременно. ПЛК же выполняет программу строчка за строчкой, сверху вниз, а потом начинает заново.</p>
+
+<figure>
+<svg viewBox="0 0 800 330" role="img" aria-label="Цикл сканирования ПЛК">
+  <text x="400" y="26" text-anchor="middle" class="txt-hi">ОДИН ЦИКЛ · типично 1–20 мс</text>
+
+  <!-- круг -->
+  <circle cx="400" cy="180" r="112" fill="none" stroke="#B5C0B2" stroke-width="2" stroke-dasharray="4 6"/>
+
+  <!-- 4 этапа -->
+  <rect x="300" y="52" width="200" height="52" rx="4" fill="#E3E8DF" stroke="#8A5522" stroke-width="2"/>
+  <text x="400" y="74" text-anchor="middle" class="txt-hi">1 · ЧТЕНИЕ ВХОДОВ</text>
+  <text x="400" y="92" text-anchor="middle" class="txt-s">снимок всех DI/AI → образ входов (PII)</text>
+
+  <rect x="545" y="152" width="235" height="56" rx="4" fill="#E3E8DF" stroke="#A87400" stroke-width="2"/>
+  <text x="662" y="174" text-anchor="middle" class="txt-hi">2 · ВЫПОЛНЕНИЕ ПРОГРАММЫ</text>
+  <text x="662" y="192" text-anchor="middle" class="txt-s">сверху вниз, слева направо</text>
+
+  <rect x="300" y="256" width="200" height="52" rx="4" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="400" y="278" text-anchor="middle" class="txt-hi">3 · ЗАПИСЬ ВЫХОДОВ</text>
+  <text x="400" y="296" text-anchor="middle" class="txt-s">образ выходов (PIQ) → клеммы</text>
+
+  <rect x="22" y="152" width="235" height="56" rx="4" fill="#E3E8DF" stroke="#1F5391" stroke-width="2"/>
+  <text x="139" y="174" text-anchor="middle" class="txt-hi">4 · СЛУЖЕБНЫЕ ЗАДАЧИ</text>
+  <text x="139" y="192" text-anchor="middle" class="txt-s">связь, диагностика, watchdog</text>
+
+  <!-- стрелки по кругу -->
+  <defs><marker id="c1" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#A87400"/></marker></defs>
+  <path d="M505 100 A 110 110 0 0 1 570 150" fill="none" stroke="#A87400" stroke-width="2.5" marker-end="url(#c1)"/>
+  <path d="M600 212 A 110 110 0 0 1 505 258" fill="none" stroke="#A87400" stroke-width="2.5" marker-end="url(#c1)"/>
+  <path d="M295 285 A 130 130 0 0 1 190 212" fill="none" stroke="#A87400" stroke-width="2.5" marker-end="url(#c1)"/>
+  <path d="M170 148 A 130 130 0 0 1 295 78" fill="none" stroke="#A87400" stroke-width="2.5" marker-end="url(#c1)"/>
+
+  <text x="400" y="172" text-anchor="middle" class="txt-s">и снова</text>
+  <text x="400" y="192" text-anchor="middle" class="txt-hi" fill="#A87400">СНАЧАЛА</text>
+  <text x="400" y="212" text-anchor="middle" class="txt-s">бесконечно, пока RUN</text>
+</svg>
+<figcaption>Контроллер не реагирует «на событие». Он бесконечно опрашивает всё подряд и заново пересчитывает всю программу — просто делает это десятки раз в секунду.</figcaption>
+</figure>
+
+<h3>Ключевая идея: образ процесса</h3>
+
+<p>Программа <strong>не читает клеммы напрямую</strong>. В начале цикла контроллер делает моментальный снимок состояния всех входов и кладёт его в область памяти — образ входов (Process Image Input, PII). Дальше вся программа работает с этим снимком.</p>
+
+<p>Это значит: если датчик сработал и отпустил в середине цикла, программа этого <strong>не увидит вообще</strong>. Для неё вход весь цикл был в том состоянии, в котором его застал снимок.</p>
+
+<p>То же с выходами. Программа пишет не на клеммы, а в образ выходов (PIQ). Реальные клеммы обновляются один раз, в конце цикла. Поэтому если в программе одна строка включает выход, а строка ниже его выключает — на клеммах не будет мигания. Победит последняя запись.</p>
+
+<figure>
+<svg viewBox="0 0 800 250" role="img" aria-label="Короткий импульс теряется между циклами сканирования">
+  <text x="400" y="22" text-anchor="middle" class="txt-hi">ПОЧЕМУ ТЕРЯЮТСЯ КОРОТКИЕ ИМПУЛЬСЫ</text>
+
+  <!-- ось циклов -->
+  <path d="M50 190 H760" stroke="#8A968A" stroke-width="2"/ fill="none"/>
+  <g stroke="#A87400" stroke-width="2">
+    <path d="M80 182 V198"/><path d="M220 182 V198"/><path d="M360 182 V198"/><path d="M500 182 V198"/><path d="M640 182 V198"/>
+  </g>
+  <g class="txt-s" text-anchor="middle" fill="#A87400">
+    <text x="80" y="216">чтение</text><text x="220" y="216">чтение</text><text x="360" y="216">чтение</text>
+    <text x="500" y="216">чтение</text><text x="640" y="216">чтение</text>
+  </g>
+  <text x="150" y="238" text-anchor="middle" class="txt-s">цикл 10 мс</text>
+
+  <!-- реальный сигнал -->
+  <text x="50" y="60" class="txt-s">РЕАЛЬНЫЙ СИГНАЛ ДАТЧИКА</text>
+  <path d="M60 130 H150 V80 H190 V130 H395 V80 H420 V130 H760" fill="none" stroke="#1E2422" stroke-width="2.5"/>
+  <text x="170" y="72" text-anchor="middle" class="txt-s" fill="#1C6B4C">40 мс</text>
+  <text x="408" y="72" text-anchor="middle" class="txt-s" fill="#A32C24">4 мс</text>
+
+  <!-- отметки -->
+  <g stroke="#1C6B4C" stroke-width="1.5" stroke-dasharray="3 3"><path d="M220 90 V182"/></g>
+  <circle cx="220" cy="80" r="5" fill="#1C6B4C"/>
+  <text x="240" y="105" class="txt-s" fill="#1C6B4C">попал в снимок → увиден</text>
+
+  <g stroke="#A32C24" stroke-width="1.5" stroke-dasharray="3 3"><path d="M500 130 V182"/></g>
+  <circle cx="500" cy="130" r="5" fill="#A32C24"/>
+  <text x="520" y="152" class="txt-s" fill="#A32C24">импульс успел кончиться → потерян навсегда</text>
+</svg>
+<figcaption>Правило: сигнал должен держаться дольше одного цикла, иначе его может не быть в снимке. Для коротких импульсов существуют скоростные счётчики и аппаратные прерывания.</figcaption>
+</figure>
+
+<h3>Что из этого следует на практике</h3>
+<ul>
+  <li><strong>Есть задержка реакции.</strong> В худшем случае — почти два цикла: сигнал пришёл сразу после снимка и ждёт следующего, потом ещё ждёт записи выходов. При цикле 10 мс это до 20 мс. Для конвейера ерунда, для отсечки пресса — нет.</li>
+  <li><strong>Порядок строк имеет значение.</strong> Если один и тот же выход управляется в двух местах программы, реально сработает то, что ниже. В релейке такой проблемы не было — там цепи параллельны физически.</li>
+  <li><strong>Короткие импульсы теряются.</strong> Кнопка, которую человек нажал, длится сотни миллисекунд — не проблема. Импульс энкодера длится микросекунды — обычный DI его не увидит, нужен скоростной вход (HSC).</li>
+  <li><strong>Бесконечный цикл вешает контроллер.</strong> Если написать цикл, который не заканчивается, сработает <strong>watchdog</strong> — сторожевой таймер — и CPU уйдёт в STOP по превышению времени цикла.</li>
+  <li><strong>Время цикла плавает.</strong> Оно зависит от того, какие ветки программы выполнялись. В диагностике CPU всегда видно текущее, минимальное и максимальное время цикла — это первое, куда смотрит наладчик при странном поведении.</li>
+</ul>
+
+<div class="note ok">
+<span class="lbl">Аналогия для запоминания</span>
+Релейная схема — это бригада, где каждый следит за своим участком одновременно. ПЛК — один обходчик, который очень быстро идёт по маршруту: смотрит на все приборы (снимок), думает (программа), переключает всё что надо (выходы), и идёт на новый круг. Он успевает сделать 50–1000 обходов в секунду, поэтому со стороны кажется, что реакция мгновенная. Но если что-то мигнуло между двумя его проходами — он этого не узнает.
+</div>
+
+<div class="task">
+<span class="lbl">Проверка</span>
+1. Время цикла 8 мс. Датчик выдаёт импульс длиной 3 мс. Гарантированно ли ПЛК его увидит? Обоснуй.<br>
+2. В программе строка 5 включает выход Q0.0, строка 30 его выключает. Оба условия истинны. Что будет на клемме?<br>
+3. Почему релейная схема аварийного стопа надёжнее программной, даже если программа написана идеально?
+</div>
+
+<!-- ================= ГЛАВА 7 ================= -->
+<h2 id="g7" data-n="Глава 07">Память и адресация</h2>
+
+<p>Чтобы написать первую программу, надо понимать, как контроллер называет свои клеммы и свои внутренние «реле».</p>
+
+<h3>Единицы измерения памяти</h3>
+<div class="tw">
+<table>
+<tr><th>Единица</th><th>Размер</th><th>Что хранит</th></tr>
+<tr><td>Бит</td><td>1 бит</td><td>0 или 1 — состояние кнопки, реле, флага</td></tr>
+<tr><td>Байт (B)</td><td>8 бит</td><td>Число 0…255, или 8 дискретных сигналов сразу</td></tr>
+<tr><td>Слово (W)</td><td>16 бит = 2 байта</td><td>Число −32768…32767, значение с АЦП</td></tr>
+<tr><td>Двойное слово (D)</td><td>32 бита = 4 байта</td><td>Большие числа, дробные значения (REAL)</td></tr>
+</table>
+</div>
+
+<h3>Адресация Siemens: как читать I0.5</h3>
+
+<figure>
+<svg viewBox="0 0 800 250" role="img" aria-label="Разбор адреса дискретного входа I0.5">
+  <text x="400" y="26" text-anchor="middle" class="txt-hi">СТРУКТУРА АДРЕСА</text>
+  <text x="400" y="86" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="46" fill="#A87400" font-weight="500">I 0 . 5</text>
+
+  <path d="M300 100 V132 H250" stroke="#8A968A" stroke-width="1.5" fill="none"/>
+  <text x="242" y="136" text-anchor="end" class="txt-m">область памяти</text>
+  <path d="M382 100 V162 H320" stroke="#8A968A" stroke-width="1.5" fill="none"/>
+  <text x="312" y="166" text-anchor="end" class="txt-m">номер байта</text>
+  <path d="M448 100 V192 H380" stroke="#8A968A" stroke-width="1.5" fill="none"/>
+  <text x="372" y="196" text-anchor="end" class="txt-m">номер бита в байте (0–7)</text>
+
+  <!-- байт с битами -->
+  <text x="470" y="150" class="txt-s">байт 0 модуля входов:</text>
+  <g>
+    <rect x="470" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+    <rect x="504" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+    <rect x="538" y="160" width="34" height="34" fill="#A87400" stroke="#A87400"/>
+    <rect x="572" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+    <rect x="606" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+    <rect x="640" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+    <rect x="674" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+    <rect x="708" y="160" width="34" height="34" fill="#E3E8DF" stroke="#8A968A"/>
+  </g>
+  <g class="txt-s" text-anchor="middle" fill="#515B54">
+    <text x="487" y="212">7</text><text x="521" y="212">6</text>
+    <text x="555" y="212" fill="#A87400">5</text><text x="589" y="212">4</text>
+    <text x="623" y="212">3</text><text x="657" y="212">2</text><text x="691" y="212">1</text><text x="725" y="212">0</text>
+  </g>
+  <text x="555" y="184" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" fill="#EFF1EB" font-weight="600">1</text>
+  <text x="606" y="238" text-anchor="middle" class="txt-s" fill="#A87400">шестая клемма модуля (счёт с нуля!)</text>
+</svg>
+<figcaption>Счёт битов всегда с нуля. I0.0 — первая клемма, I0.7 — восьмая, I1.0 — девятая. Именно здесь новички чаще всего ошибаются на единицу.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<tr><th>Обозначение</th><th>Область</th><th>Пример</th></tr>
+<tr><td>I (или E)</td><td>Входы — образ входов</td><td><code>I0.3</code> — четвёртый дискретный вход</td></tr>
+<tr><td>Q (или A)</td><td>Выходы — образ выходов</td><td><code>Q0.0</code> — первый дискретный выход</td></tr>
+<tr><td>M</td><td>Меркеры — внутренние «промежуточные реле»</td><td><code>M10.2</code> — внутренний флаг</td></tr>
+<tr><td>IW / QW</td><td>Аналоговые вход/выход, слово</td><td><code>IW64</code> — первый аналоговый канал</td></tr>
+<tr><td>DB</td><td>Блок данных — организованное хранилище</td><td><code>DB1.DBX0.0</code></td></tr>
+<tr><td>T / C</td><td>Таймеры и счётчики (в старых CPU)</td><td><code>T1</code>, <code>C5</code></td></tr>
+</table>
+</div>
+
+<p><strong>Меркер (M)</strong> — это и есть цифровой аналог твоего промежуточного реле KA. Он никуда не выходит физически, существует только в памяти, и нужен, чтобы хранить промежуточный результат: «линия в автоматическом режиме», «была авария», «цикл разрешён».</p>
+
+<h3>Символьные имена</h3>
+<p>Писать <code>I0.3</code> можно, но через полгода никто не поймёт программу. В таблице тегов каждому адресу даётся имя, и в программе используется оно:</p>
+
+<div class="formula">I0.0  →  "S1_Pusk"
+I0.1  →  "S2_Stop_NC"
+I0.2  →  "B1_Datchik_yashika"
+Q0.0  →  "KM1_Motor_konveyera"
+Q0.1  →  "HL1_Lampa_rabota"
+M10.0 →  "Rezhim_avto"</div>
+
+<div class="note">
+<span class="lbl">Профессиональная привычка</span>
+Заводи символьные имена <strong>до</strong> написания логики, а не после. И держи их синхронными с обозначениями в электрической схеме: если в схеме контактор KM1, то и тег называется KM1. Тогда наладчик с распечаткой схемы и программист смотрят на одни и те же названия — это экономит часы на пусконаладке.
+</div>
+
+<div class="task">
+<span class="lbl">Проверка</span>
+Модуль на 16 дискретных входов начинается с адреса I0.0. Какой адрес будет у 12-й клеммы? И сколько байт памяти занимает весь модуль?
+</div>
+
+<!-- ================= ГЛАВА 8 ================= -->
+<h2 id="g8" data-n="Глава 08">Шкаф с ПЛК и безопасность</h2>
+
+<p>Здесь ты на своей территории — это монтаж. Но есть нюансы, которые отличают шкаф автоматики от силового.</p>
+
+<h3>Типовой состав шкафа</h3>
+<ol>
+  <li><strong>Ввод:</strong> вводной автомат, при необходимости сетевой фильтр.</li>
+  <li><strong>Силовая часть:</strong> автоматы двигателей, контакторы, тепловые реле, частотники.</li>
+  <li><strong>Блок питания 24 В DC</strong> — сердце слаботочной части. Всегда с запасом по току минимум 30 %.</li>
+  <li><strong>Контур безопасности:</strong> реле безопасности (например, PILZ, Siemens 3SK), к нему грибки, дверные выключатели, световые барьеры.</li>
+  <li><strong>ПЛК</strong> на DIN-рейке, обычно в верхней части.</li>
+  <li><strong>Клеммники:</strong> отдельные ряды под 24 В, под сигналы, под 230/400 В.</li>
+  <li><strong>Промежуточные реле</strong> между выходами ПЛК и катушками контакторов.</li>
+</ol>
+
+<h3>Правила прокладки, которые реально влияют на работу</h3>
+<ul>
+  <li>Силовые и сигнальные кабели — <strong>в разных кабель-каналах</strong>. Пересечение допустимо только под 90°.</li>
+  <li>Аналоговые сигналы — только <strong>экранированным кабелем</strong>, экран заземляется с одной стороны (со стороны шкафа), иначе получишь контур заземления и наводку.</li>
+  <li>Кабели частотника к двигателю — экранированные обязательно, экран на 360° через специальные хомуты. Частотник — главный источник помех в шкафу.</li>
+  <li>Общая точка заземления, звездой. Никаких последовательных цепочек «от прибора к прибору».</li>
+</ul>
+
+<h3>Контур безопасности: почему он отдельно от ПЛК</h3>
+
+<figure>
+<svg viewBox="0 0 800 260" role="img" aria-label="Контур безопасности параллельно логике ПЛК">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ДВА НЕЗАВИСИМЫХ ПУТИ К КАТУШКЕ КОНТАКТОРА</text>
+
+  <!-- верх: логика -->
+  <rect x="40" y="52" width="150" height="52" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="115" y="76" text-anchor="middle" class="txt-hi">ПЛК</text>
+  <text x="115" y="94" text-anchor="middle" class="txt-s">логика процесса</text>
+  <path d="M190 78 H300" stroke="#1C6B4C" stroke-width="2.5"/ fill="none"/>
+  <rect x="300" y="52" width="140" height="52" rx="4" fill="#E3E8DF" stroke="#8A968A" stroke-width="2"/>
+  <text x="370" y="82" text-anchor="middle" class="txt-s">пром. реле</text>
+  <path d="M440 78 H560 V128" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+
+  <!-- низ: безопасность -->
+  <rect x="40" y="168" width="150" height="52" rx="4" fill="#F6E1DC" stroke="#A32C24" stroke-width="2"/>
+  <text x="115" y="190" text-anchor="middle" class="txt-hi" fill="#A32C24">ГРИБОК E-STOP</text>
+  <text x="115" y="208" text-anchor="middle" class="txt-s">контакты NC</text>
+  <path d="M190 194 H300" stroke="#A32C24" stroke-width="2.5"/ fill="none"/>
+  <rect x="300" y="168" width="140" height="52" rx="4" fill="#F6E1DC" stroke="#A32C24" stroke-width="2"/>
+  <text x="370" y="190" text-anchor="middle" class="txt-s" fill="#A32C24">РЕЛЕ</text>
+  <text x="370" y="208" text-anchor="middle" class="txt-s" fill="#A32C24">БЕЗОПАСНОСТИ</text>
+  <path d="M440 194 H560 V152" stroke="#A32C24" stroke-width="2.5" fill="none"/>
+
+  <!-- катушка -->
+  <rect x="560" y="128" width="180" height="24" rx="3" fill="#D5DCD1" stroke="#A87400" stroke-width="2"/>
+  <text x="650" y="145" text-anchor="middle" class="txt-s" fill="#A87400">КАТУШКА КОНТАКТОРА KM1</text>
+
+  <text x="400" y="248" text-anchor="middle" class="txt-s">Оба условия должны быть выполнены. Контур безопасности рвёт цепь физически, независимо от того, что думает программа.</text>
+</svg>
+<figcaption>ПЛК может только разрешить пуск. Запретить его аварийная цепь должна уметь без участия программы — это требование норм, а не вопрос вкуса.</figcaption>
+</figure>
+
+<p>Аварийный стоп подключается к <strong>реле безопасности или защитному Safety-ПЛК</strong>, которое обесточивает катушки напрямую. Дополнительно один контакт грибка обычно заводится на обычный вход ПЛК — но только для того, чтобы контроллер знал о нажатии и показал сообщение на HMI. Останавливать машину он при этом не обязан: она уже остановлена медью.</p>
+
+<div class="note danger">
+<span class="lbl">Нормативная база</span>
+Категории остановки по EN 60204-1: <strong>Категория 0</strong> — немедленное снятие питания с приводов. <strong>Категория 1</strong> — управляемый останов с последующим снятием питания. <strong>Категория 2</strong> — управляемый останов с сохранением питания. Требуемый уровень безопасности определяется оценкой рисков по EN ISO 13849-1 и выражается в Performance Level (PL a…e). Это не тема для импровизации: если тебе на объекте говорят «сделай стоп через контроллер, так проще» — это повод для письменного возражения.
+</div>
+
+<h3>Диагностика по светодиодам</h3>
+<div class="tw">
+<table>
+<tr><th>Что видишь</th><th>Что это значит</th><th>Первое действие</th></tr>
+<tr><td>RUN зелёный</td><td>Норма</td><td>—</td></tr>
+<tr><td>STOP жёлтый</td><td>Программа не выполняется</td><td>Проверить диагностический буфер CPU</td></tr>
+<tr><td>ERROR красный</td><td>Ошибка CPU или модуля</td><td>Найти модуль с красным LED, проверить питание и клеммы</td></tr>
+<tr><td>LED канала не горит</td><td>Датчик не сработал или нет 24 В</td><td>Мультиметром между клеммой и M</td></tr>
+<tr><td>LED канала горит, в программе 0</td><td>Неверная адресация или модуль не в конфигурации</td><td>Сверить аппаратную конфигурацию</td></tr>
+</table>
+</div>
+
+<p>Последняя строка — классика. Светодиод на модуле показывает <strong>физическое состояние клеммы</strong>, а программа работает с образом входов. Если они расходятся, проблема не в поле, а в проекте.</p>
+
+<div class="task">
+<span class="lbl">Итоговое задание тома</span>
+<p><strong>Объект:</strong> конвейер подачи ящиков. Есть кнопки «Пуск» (NO) и «Стоп», грибок E-Stop, оптический датчик наличия ящика, концевик крайнего положения толкателя, датчик давления пневмосети 4–20 мА на 0–16 бар, мотор конвейера, пневмоклапан толкателя 24 В, лампа «Работа», сирена.</p>
+<ol>
+  <li>Составь таблицу I/O: адрес, символьное имя, тип (DI/DO/AI), NO или NC, описание.</li>
+  <li>Куда попадёт грибок и почему он не может быть просто входом ПЛК?</li>
+  <li>С датчика давления пришло 16 мА. Сколько бар?</li>
+  <li>Датчик давления показывает 0 бар, при этом сырое значение в программе равно 0. Норма это или авария? Как отличить?</li>
+  <li>Нарисуй словами цепочку от выхода Q0.0 до вращающегося вала мотора, перечислив все промежуточные аппараты.</li>
+</ol>
+</div>
+
+<!-- ================= СЛОВАРЬ ================= -->
+<h2 id="g9" data-n="Приложение">Словарь терминов</h2>
+
+<dl class="gloss">
+<dt>ПЛК / PLC / SPS</dt><dd>Программируемый логический контроллер. Немецкое обозначение SPS — Speicherprogrammierbare Steuerung, встречается на всех немецких объектах.</dd>
+<dt>DI / DO</dt><dd>Digital Input / Output — дискретный вход и выход. В немецкой документации DE/DA.</dd>
+<dt>AI / AO</dt><dd>Analog Input / Output — аналоговый вход и выход.</dd>
+<dt>PII / PIQ</dt><dd>Образ процесса входов и выходов. Снимок состояния, с которым работает программа вместо реальных клемм.</dd>
+<dt>Scan cycle</dt><dd>Цикл сканирования: чтение входов → выполнение программы → запись выходов → служебные задачи.</dd>
+<dt>Watchdog</dt><dd>Сторожевой таймер. Если цикл превысил допустимое время, CPU уходит в STOP.</dd>
+<dt>Меркер (M)</dt><dd>Внутренний бит памяти. Цифровой аналог промежуточного реле.</dd>
+<dt>Retain</dt><dd>Энергонезависимая память для переменных, которые должны пережить отключение питания.</dd>
+<dt>PNP / NPN</dt><dd>Тип выхода датчика: выдаёт плюс или притягивает к минусу.</dd>
+<dt>Fail-safe</dt><dd>Принцип проектирования: отказ приводит систему в безопасное состояние.</dd>
+<dt>E-Stop</dt><dd>Аварийный останов. Аппаратная цепь, не зависящая от программы.</dd>
+<dt>HSC</dt><dd>High Speed Counter — скоростной счётчик для импульсов, которые не успевает поймать обычный вход.</dd>
+<dt>ET200</dt><dd>Семейство станций распределённого ввода-вывода Siemens, связывается с CPU по PROFINET/PROFIBUS.</dd>
+</dl>
+
+
+<h2 id="gB" data-n="Приложение Б">Почему эта книга выглядит именно так</h2>
+
+<p>Учебник читают долго и часто в плохих условиях: цех, бытовка, телефон в перерыве. Поэтому цвета здесь выбраны не на вкус, а по данным офтальмологии и эргономики. Ниже — что говорят исследования и какие решения из них следуют.</p>
+
+<h3>1. Тёмный текст на светлом фоне читается лучше</h3>
+<p>Сочетание «тёмные буквы на светлом» называют <strong>положительной полярностью</strong>, обратное — отрицательной. Исследование Piepenbrock и коллег, разобранное Nielsen Norman Group, показало преимущество положительной полярности во всех измерениях: и в остроте зрения, и в задачах на вычитку текста, независимо от возраста испытуемых.</p>
+<p>Механизм простой и знакомый любому, кто снимал на фотоаппарат. Светлый фон заставляет зрачок сузиться, а узкий зрачок — это меньшая диафрагма и большая <strong>глубина резкости</strong>. Картинка на сетчатке становится чётче. На тёмном фоне зрачок расширяется, и все оптические погрешности глаза проявляются сильнее.</p>
+
+<h3>2. Тёмная тема мешает трети взрослых</h3>
+<p>У людей с астигматизмом — а это по данным Американской академии офтальмологии примерно каждый третий взрослый — светлый текст на тёмном фоне даёт <strong>гало</strong>: буквы «расплываются» светящимся ореолом. Эффект тем заметнее, чем мельче шрифт. Именно поэтому тёмная тема кажется комфортной первые полчаса и утомляет через четыре часа.</p>
+
+<h3>3. Но у тёмной темы есть своя ниша</h3>
+<p>Отбрасывать её нельзя. Эксперименты показывают, что при <strong>ярком внешнем освещении</strong> тёмная тема достоверно снижала утомление глаз, а в полумраке разницы не было. Тёмный режим также помогает людям с помутнением оптических сред глаза, например при катаракте. Вывод не «одна тема лучше», а «подбирай под условия и под себя».</p>
+
+<h3>4. Зелёный — рабочая зона глаза</h3>
+<p>При дневном (фотопическом) зрении чувствительность глаза максимальна на длине волны около <strong>555 нм</strong> — это жёлто-зелёный. Хрусталик оптически «настроен» именно на этот участок спектра. Коротковолновый синий фокусируется иначе — это <strong>хроматическая аберрация</strong>, из-за которой мелкий насыщенно-синий текст выглядит мыльным и требует лишней работы аккомодации.</p>
+<p>Отсюда решение: основной акцент книги — глубокий зелёный, а синий используется только как цвет провода на схемах, крупно и никогда для мелкого текста. Красный оставлен исключительно для аварийных врезок, и никогда не ставится рядом с синим — такое сочетание даёт эффект ложной глубины, когда цвета кажутся лежащими в разных плоскостях.</p>
+
+<h3>5. Ни чистого белого, ни чистого чёрного</h3>
+<p>Максимальный контраст 21:1 (чёрное на белом) — не оптимум, а перебор: белое поле бликует, особенно под цеховыми лампами. Фон книги — светлая бумага с лёгким зелёным подтоном, текст — почти чёрный, но не чёрный. Контраст около 12:1 — это выше требования WCAG уровня AAA (7:1) и заметно мягче для глаза при долгом чтении.</p>
+
+<h3>6. Про «защиту от синего света» — честно</h3>
+<p>Систематический обзор Cochrane 2023 года, охвативший 17 рандомизированных исследований, не нашёл подтверждений, что очки с фильтром синего света уменьшают зрительное утомление при работе за компьютером. Как отмечают авторы, синего света от экрана глаз получает примерно в тысячу раз меньше, чем от дневного неба. Поэтому в книге нет никакой «защиты от синего» — вместо этого работают вещи с реальной доказательной базой: контраст, размер шрифта, длина строки и перерывы.</p>
+
+<div class="note ok">
+<span class="lbl">Что реально снижает усталость глаз</span>
+Правило <strong>20–20–20</strong>: каждые 20 минут смотреть 20 секунд на объект в 6 метрах. Осознанно моргать — при работе с экраном частота морганий падает. Держать яркость экрана <strong>близкой к яркости окружения</strong>, а не выкручивать на максимум в тёмном помещении. И держать длину строки в районе 60–80 знаков, что и сделано в вёрстке этой книги.
+</div>
+
+<div class="note">
+<span class="lbl">Источники</span>
+Nielsen Norman Group, «Dark Mode vs. Light Mode: Which Is Better?» · Cochrane Database of Systematic Reviews 2023, CD013244, Singh et al. · ACHI 2024, исследование полярности дисплея при разном внешнем освещении · CIE, функция спектральной световой эффективности · WCAG 2.2, требования к контрасту.
+</div>
+
+<div class="end">
+<p><strong>Конец первого тома.</strong> Дальше — Том 2 «Логика»: булева алгебра на языке контактов, язык Ladder, схема пуск-стоп с самоподхватом, детекторы фронтов, таймеры TON/TOF/TP, счётчики и первые полноценные программы.</p>
+<p>Перед переходом ответь на итоговое задание восьмой главы — это проверка, что фундамент лёг.</p>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* крупный базовый размер и системный шрифт — читаемость в перчатках/на ходу */
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* минимальный размер тапа для элементов управления в цеху */
+button, a, input, select, textarea {
+  font: inherit;
+}

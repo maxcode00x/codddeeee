@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ПЛК от новичка до профи · Том 4. Объект</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:#EFF1EB; --panel-2:#E3E8DF; --rail:#D5DCD1; --line:#B5C0B2;
+  --ink:#1E2422; --dim:#515B54;
+  --brown:#8A5522; --blue:#1F5391; --safety:#A87400; --live:#1C6B4C; --alarm:#A32C24;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--panel);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;line-height:1.65;padding-bottom:80px}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+/* --- обложка --- */
+.cover{min-height:78vh;display:flex;flex-direction:column;justify-content:center;
+  border-bottom:3px solid var(--safety);
+  background:repeating-linear-gradient(135deg,rgba(168,116,0,.09) 0 14px,transparent 14px 28px),
+    radial-gradient(circle at 78% 22%,rgba(28,107,76,.09),transparent 55%),var(--panel-2);
+  padding:70px 0 50px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--safety);margin:0 0 14px}
+.cover h1{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;
+  font-size:clamp(40px,11vw,84px);line-height:.94;letter-spacing:.01em;margin:0;text-transform:uppercase}
+.cover h1 em{font-style:normal;color:var(--safety);display:block}
+.cover .sub{font-size:18px;color:var(--dim);max-width:560px;margin:22px 0 0}
+.tomtag{display:inline-block;border:2px solid var(--safety);color:var(--safety);
+  font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:20px;letter-spacing:.08em;
+  padding:4px 14px;text-transform:uppercase;margin-bottom:26px}
+/* --- оглавление --- */
+.toc{background:var(--panel-2);border:1px solid var(--line);padding:24px;margin:46px 0}
+.toc h2{margin:0 0 14px;font-size:22px;border:0;padding:0}
+.toc h2::before{content:none}
+.toc ol{list-style:none;counter-reset:c;padding:0;margin:0}
+.toc li{counter-increment:c;border-bottom:1px dashed var(--line);padding:9px 0}
+.toc li:last-child{border:0}
+.toc li::before{content:counter(c,decimal-leading-zero);font-family:"IBM Plex Mono",monospace;
+  font-size:12px;color:var(--safety);margin-right:12px}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+.toc a:hover,.toc a:focus{border-bottom-color:var(--safety);color:#141917}
+/* --- типографика --- */
+h2{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:clamp(28px,6vw,38px);
+  text-transform:uppercase;letter-spacing:.02em;margin:70px 0 8px;padding-top:22px;
+  border-top:2px solid var(--line)}
+h2::before{content:attr(data-n);font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--safety);display:block;letter-spacing:.2em;margin-bottom:8px;font-weight:500}
+h3{font-family:"Barlow Condensed",sans-serif;font-size:24px;text-transform:uppercase;
+  letter-spacing:.03em;margin:38px 0 4px}
+h4{font-family:"Barlow Condensed",sans-serif;font-size:19px;letter-spacing:.03em;margin:24px 0 2px;color:var(--safety)}
+p{margin:12px 0}
+strong{color:#141917;font-weight:600}
+ul,ol{padding-left:22px}li{margin:7px 0}
+code{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;padding:2px 6px;
+  border-radius:2px;font-size:.88em;color:var(--safety)}
+/* --- схемы --- */
+figure{margin:28px 0;background:var(--panel-2);border:1px solid var(--line);padding:18px 14px 12px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);line-height:1.55}
+.txt-s{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#515B54;letter-spacing:.04em}
+.txt-m{font-family:"IBM Plex Mono",monospace;font-size:13px;fill:#1E2422}
+.txt-hi{font-family:"Barlow Condensed",sans-serif;font-size:16px;fill:#1E2422;font-weight:600;letter-spacing:.04em}
+/* --- таблицы --- */
+.tw{overflow-x:auto;margin:22px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:460px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--rail);font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  letter-spacing:.06em;font-size:15px;font-weight:600}
+td:first-child{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--safety);white-space:nowrap}
+/* --- врезки --- */
+.note{border-left:3px solid var(--safety);background:var(--panel-2);padding:14px 16px;margin:24px 0}
+.note.danger{border-left-color:var(--alarm)}
+.note.ok{border-left-color:var(--live)}
+.note .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:5px}
+.note.danger .lbl{color:var(--alarm)}.note.ok .lbl{color:var(--live)}
+.formula{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;border:1px solid var(--line);
+  padding:14px 16px;font-size:13.5px;overflow-x:auto;margin:18px 0;color:var(--live);white-space:pre}
+.task{border:1px dashed var(--safety);padding:18px;margin:34px 0;background:rgba(168,116,0,.06)}
+.task .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:8px}
+.gloss dt{font-family:"IBM Plex Mono",monospace;color:var(--safety);font-size:14px;margin-top:14px}
+.gloss dd{margin:2px 0 0;padding-left:0;color:var(--ink)}
+.end{margin-top:70px;padding-top:24px;border-top:2px solid var(--safety);color:var(--dim);font-size:14px}
+@media(max-width:560px){body{font-size:15px}figure{padding:12px 8px 10px}}
+@media(prefers-reduced-motion:no-preference){
+  .pulse{animation:p 2.6s ease-in-out infinite}@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}}
+
+/* --- том 2: листинги и диаграммы --- */
+.rung{font-family:"IBM Plex Mono",monospace;background:#E8EDE4;border:1px solid var(--line);
+  padding:12px 14px;margin:14px 0;font-size:13px;line-height:1.85;overflow-x:auto;white-space:pre}
+.rung b{color:var(--safety);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:14px 0 0;padding:0;list-style:none;
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--dim)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:20px;height:3px;border-radius:2px;display:inline-block}
+.tt{width:auto;min-width:0;font-size:13px}
+.tt td,.tt th{text-align:center;padding:6px 14px}
+.state{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  border-left:2px solid var(--line);padding-left:10px;margin:10px 0}
+</style>
+</head><body>
+<section class="cover">
+  <div class="wrap">
+    <span class="tomtag">Том 4</span>
+    <p class="eyebrow">ПЛК от новичка до профи · курс для электрика</p>
+    <h1>Объект<em>Сети, приводы, регулирование</em></h1>
+    <p class="sub">Панели оператора, PROFINET и PROFIBUS, Modbus и IO-Link, управление частотниками, аналоговое регулирование и ПИД. И то, ради чего всё это — поиск неисправности на вставшей линии.</p>
+  </div>
+</section>
+
+<div class="wrap">
+
+<div class="toc">
+  <h2>Содержание тома</h2>
+  <ol>
+    <li><a href="#g1">HMI: панель оператора</a></li>
+    <li><a href="#g2">Промышленные сети: зачем они нужны</a></li>
+    <li><a href="#g3">PROFIBUS: классика на витой паре</a></li>
+    <li><a href="#g4">PROFINET: промышленный Ethernet</a></li>
+    <li><a href="#g5">Modbus: простой и вездесущий</a></li>
+    <li><a href="#g6">IO-Link и распределённый ввод-вывод</a></li>
+    <li><a href="#g7">Частотные преобразователи</a></li>
+    <li><a href="#g8">Регулирование и ПИД</a></li>
+    <li><a href="#g9">Поиск неисправности на объекте</a></li>
+    <li><a href="#g10">Пусконаладка: порядок работ</a></li>
+  </ol>
+</div>
+
+<!-- ============ ГЛАВА 1 ============ -->
+<h2 id="g1" data-n="Глава 01">HMI: панель оператора</h2>
+
+<p>HMI (Human-Machine Interface) — это экран, через который человек разговаривает с машиной. Кнопки и лампы на дверце шкафа никуда не делись, но всё, что не относится к безопасности, давно переехало на сенсорную панель.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Уровни автоматизации: поле, контроллер, HMI, SCADA">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ПИРАМИДА АВТОМАТИЗАЦИИ</text>
+
+  <rect x="270" y="44" width="260" height="44" rx="4" fill="#E3E8DF" stroke="#1F5391" stroke-width="1.5"/>
+  <text x="400" y="63" text-anchor="middle" class="txt-m" fill="#1F5391">SCADA · диспетчерская</text>
+  <text x="400" y="80" text-anchor="middle" class="txt-s">весь цех, архив, отчёты, тренды</text>
+
+  <rect x="230" y="102" width="340" height="44" rx="4" fill="#E3E8DF" stroke="#A87400" stroke-width="2"/>
+  <text x="400" y="121" text-anchor="middle" class="txt-m" fill="#A87400">HMI · панель у машины</text>
+  <text x="400" y="138" text-anchor="middle" class="txt-s">одна линия, оператор и наладчик</text>
+
+  <rect x="190" y="160" width="420" height="44" rx="4" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="400" y="179" text-anchor="middle" class="txt-m" fill="#1C6B4C">ПЛК · логика</text>
+  <text x="400" y="196" text-anchor="middle" class="txt-s">управление в реальном времени</text>
+
+  <rect x="150" y="218" width="500" height="44" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="237" text-anchor="middle" class="txt-m">ПОЛЕ · датчики, приводы, клапаны</text>
+  <text x="400" y="254" text-anchor="middle" class="txt-s">то, что реально двигается</text>
+
+  <text x="400" y="286" text-anchor="middle" class="txt-s">Чем выше уровень, тем медленнее реакция и тем шире охват.</text>
+</svg>
+<figcaption>Панель не управляет машиной — она показывает и передаёт команды. Вся логика остаётся в контроллере, и при отказе панели машина обязана продолжать работать.</figcaption>
+</figure>
+
+<h3>Как панель связана с контроллером</h3>
+
+<p>Панель не хранит логику. Она подключается к ПЛК по сети (обычно PROFINET или Ethernet) и работает с <strong>тегами</strong> — теми же переменными, что живут в памяти контроллера. Нажал кнопку на экране — панель записала единицу в бит. Контроллер увидел его в своём цикле и отработал.</p>
+
+<div class="note danger">
+<span class="lbl">Кнопки на экране и безопасность</span>
+Сенсорная кнопка — это переменная, которая идёт через сеть с задержкой в десятки миллисекунд, а при обрыве кабеля не идёт вообще. Поэтому <strong>аварийный стоп никогда не делается на сенсорном экране</strong>. Это физический грибок на дверце шкафа с аппаратной цепью. То же относится к кнопкам двуручного управления прессов и к любым командам, от которых зависит жизнь человека.
+</div>
+
+<h3>Что должно быть на экранах</h3>
+
+<div class="tw">
+<table>
+<tr><th>Экран</th><th>Для кого</th><th>Что показывает</th></tr>
+<tr><td>Обзор линии</td><td>Оператор</td><td>Мнемосхема, состояние механизмов, счётчики выработки</td></tr>
+<tr><td>Аварии</td><td>Все</td><td>Текущие аварии текстом, история с датой и временем</td></tr>
+<tr><td>Ручной режим</td><td>Наладчик</td><td>Управление каждым механизмом по отдельности</td></tr>
+<tr><td>Уставки</td><td>Технолог</td><td>Времена, нормы, пороги, рецепты</td></tr>
+<tr><td>Диагностика I/O</td><td>Электрик</td><td>Состояние каждого входа и выхода</td></tr>
+<tr><td>Тренды</td><td>Технолог</td><td>Графики температуры, давления, скорости</td></tr>
+</table>
+</div>
+
+<p>Экран диагностики I/O — то, за что тебя будут благодарить больше всего. Он превращает поиск неисправности из хождения с мультиметром в чтение с экрана: видно, какой датчик сработал, а какой молчит, не открывая шкаф.</p>
+
+<h3>Сообщения об авариях</h3>
+
+<p>Главное правило: <strong>сообщение должно говорить, что делать</strong>, а не констатировать факт.</p>
+
+<div class="rung">Плохо:   «Ошибка 47»
+         «Авария конвейера»
+         «Datchik B3 = 0»
+
+Хорошо:  «Конвейер 2: нет сигнала от датчика ящика B3
+          более 60 секунд. Проверить датчик и наличие
+          продукта на входе.»</div>
+
+<p>Сообщения делят по типам: <strong>авария</strong> останавливает машину и требует квитирования, <strong>предупреждение</strong> не останавливает, но требует внимания, <strong>информация</strong> просто фиксируется в журнале. Каждое сообщение получает метку времени — без неё разбор ночного простоя превращается в гадание.</p>
+
+<h3>Практика: панели, которые встретишь</h3>
+<ul>
+  <li><strong>Siemens SIMATIC HMI</strong> — линейки Basic, Comfort, Unified. Программируются в WinCC внутри TIA Portal, тем же проектом, что и ПЛК. Это то, что стоит на автомобильных заводах.</li>
+  <li><strong>Weintek, Delta, ОВЕН СП</strong> — бюджетные панели со своими средами разработки.</li>
+  <li><strong>Панельные ПК со SCADA</strong> — там, где нужны архив и отчёты.</li>
+</ul>
+
+<div class="note ok">
+<span class="lbl">Что важно для наладчика</span>
+Проект панели и проект ПЛК — разные файлы, даже когда лежат в одном решении TIA Portal. Загружаются они отдельно. Классическая ошибка на объекте: изменил имя тега в ПЛК, загрузил контроллер, а панель не перезагрузил — и на экране пустые поля или сообщение о неизвестном теге. Правило: поменял интерфейс — грузи оба устройства.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 1</span>
+Сформулируй три сообщения об авариях для конвейера из второго тома: падение давления, отсутствие ящиков дольше минуты, срабатывание тепловой защиты мотора. Для каждого укажи тип и что должен сделать оператор.
+</div>
+
+<!-- ============ ГЛАВА 2 ============ -->
+<h2 id="g2" data-n="Глава 02">Промышленные сети: зачем они нужны</h2>
+
+<p>Ты уже тянул эти кабели на объектах. Теперь посмотрим, что по ним идёт и почему от классической схемы «каждый датчик своим проводом до шкафа» отказались.</p>
+
+<figure>
+<svg viewBox="0 0 800 280" role="img" aria-label="Параллельный монтаж против полевой шины">
+  <text x="200" y="24" text-anchor="middle" class="txt-hi">КЛАССИЧЕСКИЙ МОНТАЖ</text>
+  <text x="600" y="24" text-anchor="middle" class="txt-hi" fill="#1C6B4C">ПОЛЕВАЯ ШИНА</text>
+  <path d="M400 14 V266" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+
+  <!-- слева -->
+  <rect x="30" y="52" width="70" height="180" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="65" y="130" text-anchor="middle" class="txt-s">ШКАФ</text>
+  <text x="65" y="148" text-anchor="middle" class="txt-s">ПЛК</text>
+  <g stroke="#8A5522" stroke-width="1.4" fill="none">
+    <path d="M100 66 H330"/><path d="M100 80 H330"/><path d="M100 94 H330"/><path d="M100 108 H330"/>
+    <path d="M100 122 H330"/><path d="M100 136 H330"/><path d="M100 150 H330"/><path d="M100 164 H330"/>
+    <path d="M100 178 H330"/><path d="M100 192 H330"/><path d="M100 206 H330"/><path d="M100 220 H330"/>
+  </g>
+  <g fill="#E3E8DF" stroke="#1E2422">
+    <rect x="330" y="58" width="42" height="30" rx="2"/><rect x="330" y="100" width="42" height="30" rx="2"/>
+    <rect x="330" y="142" width="42" height="30" rx="2"/><rect x="330" y="184" width="42" height="30" rx="2"/>
+  </g>
+  <text x="200" y="252" text-anchor="middle" class="txt-s" fill="#A32C24">12 кабелей через весь цех</text>
+  <text x="200" y="268" text-anchor="middle" class="txt-s" fill="#A32C24">лотки, время монтажа, поиск обрыва</text>
+
+  <!-- справа -->
+  <rect x="430" y="52" width="70" height="180" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="465" y="130" text-anchor="middle" class="txt-s">ШКАФ</text>
+  <text x="465" y="148" text-anchor="middle" class="txt-s">ПЛК</text>
+  <path d="M500 140 H730" stroke="#1C6B4C" stroke-width="3" fill="none"/>
+  <g stroke="#1C6B4C" stroke-width="2" fill="none">
+    <path d="M560 140 V76"/><path d="M630 140 V76"/><path d="M700 140 V76"/>
+    <path d="M595 140 V204"/><path d="M665 140 V204"/>
+  </g>
+  <g fill="#E3E8DF" stroke="#1C6B4C" stroke-width="1.5">
+    <rect x="539" y="46" width="42" height="30" rx="2"/><rect x="609" y="46" width="42" height="30" rx="2"/>
+    <rect x="679" y="46" width="42" height="30" rx="2"/>
+    <rect x="574" y="204" width="42" height="30" rx="2"/><rect x="644" y="204" width="42" height="30" rx="2"/>
+  </g>
+  <text x="600" y="252" text-anchor="middle" class="txt-s" fill="#1C6B4C">один кабель + станции рядом с оборудованием</text>
+  <text x="600" y="268" text-anchor="middle" class="txt-s" fill="#1C6B4C">плюс диагностика каждого узла</text>
+</svg>
+<figcaption>Полевая шина заменяет пучок кабелей одной линией связи. Станции ввода-вывода ставятся прямо у механизмов, а до датчиков остаются короткие концы.</figcaption>
+</figure>
+
+<h3>Что даёт шина кроме экономии кабеля</h3>
+<ul>
+  <li><strong>Диагностику.</strong> Обрыв провода к датчику, перегрузка выхода, отсутствие питания на станции — всё приходит в контроллер как сообщение, а не как загадочное молчание входа.</li>
+  <li><strong>Данные вместо сигналов.</strong> От частотника по одному кабелю приходят ток, обороты, температура, код аварии, наработка. Аналоговым сигналом ты бы получил одно значение.</li>
+  <li><strong>Параметрирование.</strong> Замена частотника: новый подключается, контроллер сам заливает в него параметры. Без сети это ручной набор десятков значений с клавиатуры привода.</li>
+  <li><strong>Масштабируемость.</strong> Добавить станцию на восемь входов — это один патч-корд и правка конфигурации, а не прокладка восьми кабелей.</li>
+</ul>
+
+<h3>Уровни сетей</h3>
+<div class="tw">
+<table>
+<tr><th>Уровень</th><th>Кто с кем</th><th>Примеры</th><th>Требование</th></tr>
+<tr><td>Датчик — устройство</td><td>Датчик и модуль</td><td>IO-Link, AS-i</td><td>Просто и дёшево</td></tr>
+<tr><td>Полевой</td><td>ПЛК и периферия</td><td>PROFINET, PROFIBUS, EtherCAT, Modbus</td><td>Скорость и предсказуемость</td></tr>
+<tr><td>Управления</td><td>ПЛК с ПЛК, SCADA</td><td>Ethernet, OPC UA</td><td>Объём данных</td></tr>
+<tr><td>Предприятия</td><td>Учётные системы</td><td>Ethernet, MQTT</td><td>Интеграция</td></tr>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">Ключевое слово: детерминизм</span>
+Обычный офисный Ethernet доставляет пакет «когда получится» — задержка в сотни миллисекунд никого не смущает. Промышленной сети нужен <strong>детерминизм</strong>: гарантия, что данные придут за строго определённое время. Механизм не может ждать, пока сеть освободится. Именно поэтому промышленные протоколы устроены сложнее офисных, хотя кабель и разъёмы могут выглядеть одинаково.
+</div>
+
+<!-- ============ ГЛАВА 3 ============ -->
+<h2 id="g3" data-n="Глава 03">PROFIBUS: классика на витой паре</h2>
+
+<p>PROFIBUS DP появился в начале девяностых и до сих пор работает на тысячах линий. Новые проекты на нём почти не делают, но обслуживать придётся ещё долго — а на старых участках заводов он встречается сплошь и рядом.</p>
+
+<figure>
+<svg viewBox="0 0 800 260" role="img" aria-label="Топология шины PROFIBUS с терминаторами">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ЛИНЕЙНАЯ ТОПОЛОГИЯ · ТОЛЬКО ТАК</text>
+
+  <!-- шина -->
+  <path d="M110 130 H700" stroke="#8B00A0" stroke-width="4" fill="none"/>
+
+  <!-- терминаторы -->
+  <rect x="60" y="106" width="50" height="48" rx="3" fill="#F6E1DC" stroke="#A32C24" stroke-width="2"/>
+  <text x="85" y="126" text-anchor="middle" class="txt-s" fill="#A32C24">ТЕРМ.</text>
+  <text x="85" y="144" text-anchor="middle" class="txt-s" fill="#A32C24">ON</text>
+  <rect x="700" y="106" width="50" height="48" rx="3" fill="#F6E1DC" stroke="#A32C24" stroke-width="2"/>
+  <text x="725" y="126" text-anchor="middle" class="txt-s" fill="#A32C24">ТЕРМ.</text>
+  <text x="725" y="144" text-anchor="middle" class="txt-s" fill="#A32C24">ON</text>
+
+  <!-- мастер -->
+  <rect x="140" y="56" width="110" height="48" rx="3" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="195" y="76" text-anchor="middle" class="txt-m" fill="#1C6B4C">МАСТЕР</text>
+  <text x="195" y="94" text-anchor="middle" class="txt-s">ПЛК, адрес 1</text>
+  <path d="M195 104 V130" stroke="#8B00A0" stroke-width="2" fill="none"/>
+
+  <!-- слейвы -->
+  <g>
+    <rect x="300" y="160" width="90" height="46" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+    <text x="345" y="180" text-anchor="middle" class="txt-s">ET200</text>
+    <text x="345" y="196" text-anchor="middle" class="txt-s">адрес 3</text>
+    <path d="M345 160 V130" stroke="#8B00A0" stroke-width="2" fill="none"/>
+
+    <rect x="430" y="160" width="90" height="46" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+    <text x="475" y="180" text-anchor="middle" class="txt-s">частотник</text>
+    <text x="475" y="196" text-anchor="middle" class="txt-s">адрес 4</text>
+    <path d="M475 160 V130" stroke="#8B00A0" stroke-width="2" fill="none"/>
+
+    <rect x="560" y="160" width="90" height="46" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+    <text x="605" y="180" text-anchor="middle" class="txt-s">весы</text>
+    <text x="605" y="196" text-anchor="middle" class="txt-s">адрес 5</text>
+    <path d="M605 160 V130" stroke="#8B00A0" stroke-width="2" fill="none"/>
+  </g>
+
+  <text x="400" y="238" text-anchor="middle" class="txt-s">Ответвления («шлейфы») недопустимы. Кабель заходит в разъём и выходит из него дальше.</text>
+  <text x="400" y="254" text-anchor="middle" class="txt-s" fill="#A32C24">Терминаторы включаются только на двух крайних устройствах — ни больше, ни меньше.</text>
+</svg>
+<figcaption>Физически это одна непрерывная линия от терминатора до терминатора. Любая звезда или ответвление вызывает отражения сигнала и плавающие ошибки связи.</figcaption>
+</figure>
+
+<h3>Что нужно знать при монтаже</h3>
+
+<div class="tw">
+<table>
+<tr><th>Параметр</th><th>Значение</th></tr>
+<tr><td>Физика</td><td>RS-485, экранированная витая пара, кабель фиолетовый</td></tr>
+<tr><td>Скорость</td><td>от 9,6 кбит/с до 12 Мбит/с, одна на всю шину</td></tr>
+<tr><td>Длина сегмента</td><td>зависит от скорости: 1000 м при 187 кбит/с, 100 м при 12 Мбит/с</td></tr>
+<tr><td>Устройств в сегменте</td><td>до 32, дальше нужен повторитель</td></tr>
+<tr><td>Адреса</td><td>0…126, задаются переключателями на устройстве или в софте</td></tr>
+<tr><td>Разъём</td><td>9-контактный D-Sub, обычно со встроенным переключателем терминатора</td></tr>
+</table>
+</div>
+
+<h3>Три ошибки, которые дают «плавающую» связь</h3>
+
+<ol>
+  <li><strong>Терминаторы.</strong> Не включены на концах или включены посередине. Шина работает, но с ошибками, которые проявляются под нагрузкой или при включении мощного оборудования рядом.</li>
+  <li><strong>Экран.</strong> Должен садиться на корпус разъёма по всей окружности через специальный хомут, а не скручиваться в косичку и вешаться на болт. «Косичка» превращает экран в антенну.</li>
+  <li><strong>Дублирование адресов.</strong> Два устройства с одним адресом — и оба работают через раз. Проверяется по журналу диагностики мастера.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Как читать светодиоды PROFIBUS</span>
+На большинстве станций два индикатора. <strong>BF (Bus Fault)</strong> — нет связи вообще: неправильная скорость, обрыв, адрес не совпадает с конфигурацией. <strong>SF (System Fault)</strong> — связь есть, но с устройством что-то не так: отсутствует питание модулей, отказ канала, конфигурация не соответствует фактическому составу. Начинать всегда с BF: пока он горит, разбираться с SF бессмысленно.
+</div>
+
+<p>Каждое устройство описывается файлом <strong>GSD</strong> — текстовым паспортом, который производитель выкладывает на своём сайте. Его загружают в среду разработки, после чего устройство появляется в каталоге и его можно добавить в конфигурацию. Нет GSD — устройство в проект не встанет.</p>
+
+<div class="task">
+<span class="lbl">Задание 3</span>
+Линия работала год, затем после установки нового сварочного аппарата в соседнем пролёте начала периодически терять связь с двумя станциями в конце шины. Перечисли, что проверишь и в каком порядке.
+</div>
+<!-- ============ ГЛАВА 4 ============ -->
+<h2 id="g4" data-n="Глава 04">PROFINET: промышленный Ethernet</h2>
+
+<p>Это то, что ты тянул на VW и Stellantis. PROFINET использует обычные кабели и разъёмы Ethernet, но протокол работает поверх них по своим правилам, обеспечивая предсказуемое время доставки.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Топологии PROFINET: линия, звезда, кольцо">
+  <text x="400" y="22" text-anchor="middle" class="txt-hi">ТОПОЛОГИИ PROFINET</text>
+
+  <!-- линия -->
+  <text x="130" y="52" text-anchor="middle" class="txt-m" fill="#1C6B4C">Линия</text>
+  <rect x="30" y="66" width="70" height="34" rx="3" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="1.8"/>
+  <text x="65" y="88" text-anchor="middle" class="txt-s">ПЛК</text>
+  <g fill="#E3E8DF" stroke="#1E2422" stroke-width="1.3">
+    <rect x="30" y="120" width="70" height="30" rx="3"/><rect x="30" y="164" width="70" height="30" rx="3"/>
+    <rect x="30" y="208" width="70" height="30" rx="3"/>
+  </g>
+  <g stroke="#1C6B4C" stroke-width="2" fill="none">
+    <path d="M65 100 V120"/><path d="M65 150 V164"/><path d="M65 194 V208"/>
+  </g>
+  <text x="130" y="262" text-anchor="middle" class="txt-s">коммутаторы встроены</text>
+  <text x="130" y="278" text-anchor="middle" class="txt-s">в сами устройства</text>
+
+  <path d="M225 40 V285" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+
+  <!-- звезда -->
+  <text x="400" y="52" text-anchor="middle" class="txt-m" fill="#1F5391">Звезда</text>
+  <rect x="365" y="66" width="70" height="34" rx="3" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="1.8"/>
+  <text x="400" y="88" text-anchor="middle" class="txt-s">ПЛК</text>
+  <rect x="360" y="122" width="80" height="32" rx="3" fill="#E3E8DF" stroke="#1F5391" stroke-width="1.8"/>
+  <text x="400" y="143" text-anchor="middle" class="txt-s">коммутатор</text>
+  <path d="M400 100 V122" stroke="#1C6B4C" stroke-width="2" fill="none"/>
+  <g fill="#E3E8DF" stroke="#1E2422" stroke-width="1.3">
+    <rect x="280" y="200" width="66" height="30" rx="3"/><rect x="367" y="200" width="66" height="30" rx="3"/>
+    <rect x="454" y="200" width="66" height="30" rx="3"/>
+  </g>
+  <g stroke="#1C6B4C" stroke-width="2" fill="none">
+    <path d="M380 154 L313 200"/><path d="M400 154 V200"/><path d="M420 154 L487 200"/>
+  </g>
+  <text x="400" y="262" text-anchor="middle" class="txt-s">обрыв одного кабеля</text>
+  <text x="400" y="278" text-anchor="middle" class="txt-s">валит одно устройство</text>
+
+  <path d="M570 40 V285" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+
+  <!-- кольцо -->
+  <text x="690" y="52" text-anchor="middle" class="txt-m" fill="#A87400">Кольцо MRP</text>
+  <rect x="655" y="66" width="70" height="34" rx="3" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="1.8"/>
+  <text x="690" y="88" text-anchor="middle" class="txt-s">ПЛК</text>
+  <g fill="#E3E8DF" stroke="#1E2422" stroke-width="1.3">
+    <rect x="600" y="140" width="60" height="30" rx="3"/><rect x="720" y="140" width="60" height="30" rx="3"/>
+    <rect x="660" y="205" width="60" height="30" rx="3"/>
+  </g>
+  <g stroke="#A87400" stroke-width="2" fill="none">
+    <path d="M665 100 L630 140"/><path d="M715 100 L750 140"/>
+    <path d="M630 170 L672 205"/><path d="M750 170 L710 205"/>
+  </g>
+  <text x="690" y="262" text-anchor="middle" class="txt-s">обрыв не останавливает —</text>
+  <text x="690" y="278" text-anchor="middle" class="txt-s">данные идут в обход</text>
+</svg>
+<figcaption>Линейная топология самая частая в цеху: коммутатор встроен в каждую станцию, и кабель идёт от устройства к устройству. Кольцо с протоколом MRP добавляет резервирование.</figcaption>
+</figure>
+
+<h3>Ключевые отличия от PROFIBUS</h3>
+
+<div class="tw">
+<table>
+<tr><th>Параметр</th><th>PROFIBUS DP</th><th>PROFINET</th></tr>
+<tr><td>Физика</td><td>RS-485, фиолетовый кабель</td><td>Ethernet, зелёный кабель</td></tr>
+<tr><td>Скорость</td><td>до 12 Мбит/с</td><td>100 Мбит/с и выше</td></tr>
+<tr><td>Топология</td><td>только линия</td><td>линия, звезда, дерево, кольцо</td></tr>
+<tr><td>Длина между устройствами</td><td>сегмент общий</td><td>100 м медь, километры оптика</td></tr>
+<tr><td>Идентификация</td><td>числовой адрес 0…126</td><td>имя устройства + IP-адрес</td></tr>
+<tr><td>Терминаторы</td><td>обязательны</td><td>не нужны</td></tr>
+<tr><td>Файл описания</td><td>GSD</td><td>GSDML (XML)</td></tr>
+<tr><td>Число устройств</td><td>32 на сегмент</td><td>практически не ограничено</td></tr>
+</table>
+</div>
+
+<h3>Имя устройства — то, что путает новичков</h3>
+
+<p>В PROFIBUS адрес выставлялся переключателями на корпусе. В PROFINET у каждого устройства есть <strong>имя</strong> (Device Name) — текстовая строка вроде <code>et200-konveyer-1</code>. Контроллер ищет устройство именно по имени, а IP-адрес присваивает сам при запуске.</p>
+
+<p>Отсюда практическое следствие, важное при замене оборудования: <strong>новая станция из коробки имени не имеет</strong>. Поставил её вместо сгоревшей, подключил кабель — связи нет, хотя всё исправно. Нужно присвоить имя через среду разработки (в TIA Portal это функция «Назначить имя устройства») или через кнопку на самой станции, если она поддерживает.</p>
+
+<div class="note ok">
+<span class="lbl">Замена без ноутбука</span>
+Многие станции ET200 поддерживают <strong>сменный модуль памяти</strong>, в котором хранится имя. Переставил его из старой станции в новую — и она сразу подхватила своё имя, ноутбук не нужен. У новых CPU есть и функция автоматического назначения по топологии: контроллер знает, что к порту 2 станции А подключена станция Б, и присваивает имя сам. Обе возможности надо закладывать при проектировании, тогда ночная замена делается за десять минут дежурным электриком.
+</div>
+
+<h3>Классы реального времени</h3>
+<ul>
+  <li><strong>RT (Real Time)</strong> — обычный режим, время обновления от единиц миллисекунд. Покрывает 95 % задач: конвейеры, клапаны, датчики, частотники.</li>
+  <li><strong>IRT (Isochronous Real Time)</strong> — синхронизированный режим с точностью до микросекунд, требует специальных коммутаторов. Нужен для многоосевого движения, где приводы обязаны работать синхронно.</li>
+  <li><strong>PROFIsafe</strong> — протокол безопасности поверх PROFINET. Позволяет передавать сигналы аварийного стопа и защитных барьеров по той же сети, с контролем целостности. Именно так устроены современные линии в автопроме.</li>
+</ul>
+
+<h3>Монтаж: что реально важно</h3>
+<ul>
+  <li>Кабель промышленного исполнения, а не офисный патч-корд. Другая оболочка, стойкость к маслу и вибрации, жёсткие жилы для стационарной прокладки.</li>
+  <li>Разъёмы <strong>M12 с кодировкой D</strong> в поле, RJ45 в шкафу. M12 держит воду, пыль и вибрацию.</li>
+  <li>Максимум 100 метров между устройствами по меди. Дальше — оптика.</li>
+  <li>Разделять с силовыми трассами. Ethernet устойчивее RS-485, но кабель частотника рядом всё равно испортит связь.</li>
+</ul>
+
+<div class="task">
+<span class="lbl">Задание 4</span>
+Сгорела станция ET200 на линии. Заменил на новую такого же артикула, подключил все кабели правильно, питание есть, но контроллер её не видит и выдаёт ошибку конфигурации. В чём причина и что нужно сделать?
+</div>
+
+<!-- ============ ГЛАВА 5 ============ -->
+<h2 id="g5" data-n="Глава 05">Modbus: простой и вездесущий</h2>
+
+<p>Modbus — самый старый из живых промышленных протоколов, разработан в 1979 году. Он примитивен по сравнению с PROFINET, и именно поэтому его поддерживает почти всё: счётчики электроэнергии, регуляторы температуры, весы, датчики, преобразователи частоты.</p>
+
+<div class="tw">
+<table>
+<tr><th>Разновидность</th><th>Физика</th><th>Где применяется</th></tr>
+<tr><td>Modbus RTU</td><td>RS-485, витая пара</td><td>Приборы учёта, регуляторы, простая периферия</td></tr>
+<tr><td>Modbus TCP</td><td>Ethernet</td><td>Связь с системами верхнего уровня, шлюзы</td></tr>
+</table>
+</div>
+
+<h3>Как устроен обмен</h3>
+
+<p>Всё строится на модели «мастер спрашивает — подчинённый отвечает». Мастер один, инициатива всегда у него. Данные организованы в четыре области:</p>
+
+<div class="rung">Discrete Inputs     дискретные входы, только чтение      1 бит
+Coils               дискретные выходы, чтение и запись   1 бит
+Input Registers     аналоговые входы, только чтение      16 бит
+Holding Registers   регистры хранения, чтение и запись   16 бит
+
+Основные функции:
+  01  чтение Coils            03  чтение Holding Registers
+  02  чтение Discrete Inputs  04  чтение Input Registers
+  05  запись одного Coil      06  запись одного регистра
+  15  запись группы Coils     16  запись группы регистров</div>
+
+<div class="note danger">
+<span class="lbl">Смещение адресов — вечная ловушка</span>
+В документации приборов адреса регистров указывают то с нуля, то с единицы, а иногда в виде номеров вида 40001. Регистр 40001 в такой записи — это Holding Register с адресом 0. Расхождение на единицу — самая частая причина того, что «прибор отвечает, но данные бессмысленные». Если значения похожи на правду, но сдвинуты, проверяй смещение первым делом.
+</div>
+
+<p>Вторая частая беда — <strong>порядок байтов</strong>. Значения, занимающие два регистра (32-битные числа, дробные), разные производители укладывают в разном порядке. Если приходит температура 1143,3 вместо 25,7 — почти наверняка нужно поменять местами слова. В большинстве библиотек для этого есть готовая настройка.</p>
+
+<!-- ============ ГЛАВА 6 ============ -->
+<h2 id="g6" data-n="Глава 06">IO-Link и распределённый ввод-вывод</h2>
+
+<h3>IO-Link: цифра на последнем метре</h3>
+
+<p>IO-Link — это связь между датчиком и модулем. Тот же трёхпроводной кабель, что ты всегда тянул, тот же разъём M12, но по сигнальному проводу вместо простого «есть 24 В / нет» идёт цифровой обмен.</p>
+
+<div class="tw">
+<table>
+<tr><th>Что даёт</th><th>Как это выглядит на объекте</th></tr>
+<tr><td>Параметры по сети</td><td>Порог срабатывания датчика меняется из программы, а не отвёрткой на корпусе</td></tr>
+<tr><td>Диагностика</td><td>Датчик сообщает о загрязнении линзы до того, как перестанет видеть деталь</td></tr>
+<tr><td>Замена без настройки</td><td>Поставил новый датчик — мастер сам залил в него параметры старого</td></tr>
+<tr><td>Больше данных</td><td>Вместо факта «есть деталь» приходит расстояние в миллиметрах</td></tr>
+</table>
+</div>
+
+<p>Ограничения простые: обычный неэкранированный трёхпроводной кабель длиной до 20 метров, одно устройство на порт. Датчик IO-Link можно включить и в обычный дискретный вход — он будет работать в совместимом режиме как простой датчик.</p>
+
+<h3>Распределённый ввод-вывод</h3>
+
+<p>Это то, что ты видел на автозаводах: шкаф с контроллером стоит в одном месте, а станции ввода-вывода развешаны по линии рядом с механизмами и связаны с ним одной сетью.</p>
+
+<div class="tw">
+<table>
+<tr><th>Исполнение</th><th>Пример Siemens</th><th>Где ставится</th></tr>
+<tr><td>Модульное в шкафу</td><td>ET200SP, ET200M</td><td>Локальные шкафы вдоль линии</td></tr>
+<tr><td>Блочное с защитой IP67</td><td>ET200eco, ET200pro</td><td>Прямо на раме машины, без шкафа</td></tr>
+<tr><td>С функциями безопасности</td><td>модули F-DI, F-DO</td><td>Защитные барьеры, дверные выключатели</td></tr>
+</table>
+</div>
+
+<p>Исполнение IP67 — самое интересное для монтажника: станция крепится на профиль рядом с механизмом, датчики подключаются короткими кабелями M12, шкаф не нужен вообще. Меньше меди, меньше клеммников, меньше мест для ошибки.</p>
+
+<!-- ============ ГЛАВА 7 ============ -->
+<h2 id="g7" data-n="Глава 07">Частотные преобразователи</h2>
+
+<p>Частотник (ЧРП, VFD, Umrichter) управляет скоростью асинхронного двигателя, меняя частоту питающего напряжения. Для ПЛК это просто ещё одно устройство, которому нужно передать задание и от которого нужно получить состояние.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Управление частотником: дискретно-аналоговое против сетевого">
+  <text x="200" y="24" text-anchor="middle" class="txt-hi">ПРОВОДАМИ</text>
+  <text x="600" y="24" text-anchor="middle" class="txt-hi" fill="#1C6B4C">ПО СЕТИ</text>
+  <path d="M400 14 V286" stroke="#B5C0B2" stroke-dasharray="4 4" fill="none"/>
+
+  <!-- слева -->
+  <rect x="30" y="50" width="80" height="200" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="70" y="146" text-anchor="middle" class="txt-s">ПЛК</text>
+  <rect x="290" y="50" width="90" height="200" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="335" y="140" text-anchor="middle" class="txt-s">ЧАСТОТНИК</text>
+  <g stroke="#8A5522" stroke-width="1.8" fill="none">
+    <path d="M110 76 H290"/><path d="M110 100 H290"/><path d="M110 124 H290"/><path d="M110 172 H290"/><path d="M110 214 H290"/>
+  </g>
+  <g class="txt-s" fill="#515B54">
+    <text x="200" y="70" text-anchor="middle">DO: пуск вперёд</text>
+    <text x="200" y="94" text-anchor="middle">DO: пуск назад</text>
+    <text x="200" y="118" text-anchor="middle">AO: задание частоты</text>
+    <text x="200" y="166" text-anchor="middle">DI: готовность</text>
+    <text x="200" y="208" text-anchor="middle">DI: авария</text>
+  </g>
+  <text x="200" y="266" text-anchor="middle" class="txt-s" fill="#A32C24">5 проводов ради 5 сигналов</text>
+  <text x="200" y="282" text-anchor="middle" class="txt-s" fill="#A32C24">код аварии не узнать</text>
+
+  <!-- справа -->
+  <rect x="430" y="50" width="80" height="200" rx="3" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="470" y="146" text-anchor="middle" class="txt-s">ПЛК</text>
+  <rect x="690" y="50" width="90" height="200" rx="3" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="735" y="140" text-anchor="middle" class="txt-s">ЧАСТОТНИК</text>
+  <path d="M510 150 H690" stroke="#1C6B4C" stroke-width="3.5" fill="none"/>
+  <text x="600" y="140" text-anchor="middle" class="txt-s" fill="#1C6B4C">один кабель PROFINET</text>
+  <g class="txt-s" fill="#515B54">
+    <text x="600" y="182" text-anchor="middle">команды: пуск, направление, задание</text>
+    <text x="600" y="200" text-anchor="middle">обратно: обороты, ток, момент,</text>
+    <text x="600" y="218" text-anchor="middle">температура, код аварии, наработка</text>
+  </g>
+  <text x="600" y="266" text-anchor="middle" class="txt-s" fill="#1C6B4C">параметры заливаются автоматически</text>
+  <text x="600" y="282" text-anchor="middle" class="txt-s" fill="#1C6B4C">при замене привода</text>
+</svg>
+<figcaption>Проводное управление проще в понимании, сетевое даёт диагностику и быструю замену. На современных линиях используется сетевое.</figcaption>
+</figure>
+
+<h3>Параметры, которые задаются всегда</h3>
+
+<div class="tw">
+<table>
+<tr><th>Группа</th><th>Что настраивается</th><th>Почему важно</th></tr>
+<tr><td>Данные двигателя</td><td>Мощность, ток, напряжение, обороты, cos φ с таблички</td><td>Без них защита и расчёт момента работают неверно</td></tr>
+<tr><td>Разгон и торможение</td><td>Время до номинала и обратно</td><td>Слишком быстро — срыв груза и перегрузка; слишком долго — потеря темпа</td></tr>
+<tr><td>Пределы частоты</td><td>Минимум и максимум</td><td>Защита механизма от недопустимых скоростей</td></tr>
+<tr><td>Источник команд</td><td>Клеммы, панель или сеть</td><td>Частая причина «привод не реагирует на ПЛК»</td></tr>
+<tr><td>Тормозной резистор</td><td>Наличие и параметры</td><td>При торможении инерционной нагрузки без него растёт напряжение звена</td></tr>
+</table>
+</div>
+
+<div class="note danger">
+<span class="lbl">Частотник — главный источник помех в шкафу</span>
+Кабель от привода к двигателю обязательно экранированный, экран заводится на корпус <strong>по всей окружности</strong> через специальный хомут с обеих сторон, а не косичкой на болт. Сетевые и сигнальные кабели прокладываются в других лотках. Нарушишь — получишь плавающие сбои связи и ложные срабатывания датчиков по всему шкафу, причину которых будут искать неделями.
+</div>
+
+<h3>Что читать обратно</h3>
+<p>Когда привод подключён по сети, кроме факта «работает» доступны выходная частота, ток двигателя, момент, напряжение звена постоянного тока, температура радиатора, код последней аварии и наработка. Из этого получается настоящая диагностика: рост тока при неизменной нагрузке означает, что подшипник или редуктор идут к отказу. Обслуживание по состоянию начинается именно с чтения этих значений.</p>
+
+<div class="task">
+<span class="lbl">Задание 7</span>
+Конвейер с частотником по PROFINET периодически встаёт с аварией по перегрузке, всегда после обеденного перерыва, когда на ленту сразу кладут много продукции. Какие параметры привода посмотришь, что прочитаешь из сети и что поменяешь в программе, чтобы устранить причину, а не симптом?
+</div>
+<!-- ============ ГЛАВА 8 ============ -->
+<h2 id="g8" data-n="Глава 08">Регулирование и ПИД</h2>
+
+<p>До сих пор мы управляли по принципу «включить — выключить». Но есть задачи, где нужно <strong>удерживать величину</strong>: температуру в печи, давление в магистрали, уровень в баке, натяжение полотна. Здесь начинается регулирование.</p>
+
+<h3>Двухпозиционное регулирование</h3>
+
+<p>Самый простой способ, знакомый по бытовому термостату: упало ниже порога — включить нагрев, поднялось выше — выключить. Чтобы выход не дёргался у самой уставки, задают <strong>гистерезис</strong> — мёртвую зону.</p>
+
+<div class="rung">Уставка 60 °C, гистерезис 2 °C
+
+    T &lt; 59 °C  ->  нагрев включить
+    T &gt; 61 °C  ->  нагрев выключить
+    между      ->  оставить как есть</div>
+
+<p>Дёшево и надёжно. Минус — температура всё время колеблется вокруг уставки, а исполнительный механизм постоянно щёлкает. Для печи с большой инерцией годится, для точного процесса нет.</p>
+
+<h3>ПИД: три составляющие</h3>
+
+<p>ПИД-регулятор считает <strong>рассогласование</strong> — разницу между заданием и фактом — и на его основе плавно вычисляет выходной сигнал. Три составляющие смотрят на рассогласование по-разному.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Реакция объекта при разных настройках регулятора">
+  <text x="400" y="22" text-anchor="middle" class="txt-hi">КАК ВЫХОДИТ НА УСТАВКУ</text>
+
+  <!-- оси -->
+  <path d="M70 250 H760" stroke="#1E2422" stroke-width="1.5" fill="none"/>
+  <path d="M70 50 V250" stroke="#1E2422" stroke-width="1.5" fill="none"/>
+  <text x="52" y="54" class="txt-s">знач.</text>
+  <text x="750" y="268" class="txt-s">время</text>
+
+  <!-- уставка -->
+  <path d="M70 110 H760" stroke="#A87400" stroke-width="1.5" stroke-dasharray="6 4" fill="none"/>
+  <text x="620" y="102" class="txt-s" fill="#A87400">уставка</text>
+
+  <!-- только P: недорегулирование -->
+  <path d="M70 250 C140 250 170 170 250 162 C400 150 600 148 760 148"
+        stroke="#1F5391" stroke-width="2.5" fill="none"/>
+  <text x="600" y="168" class="txt-s" fill="#1F5391">только P — остаётся ошибка</text>
+
+  <!-- PI: выходит точно, но медленнее -->
+  <path d="M70 250 C150 250 180 130 260 116 C360 100 420 122 500 112 C600 106 680 110 760 110"
+        stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <text x="330" y="92" class="txt-s" fill="#1C6B4C">PI — выходит точно на уставку</text>
+
+  <!-- слишком большой P: колебания -->
+  <path d="M70 250 C120 250 140 60 190 60 C240 60 250 200 300 196 C350 192 360 76 410 80
+           C460 84 470 168 520 160 C580 152 600 120 660 114 C710 110 730 110 760 110"
+        stroke="#A32C24" stroke-width="2" fill="none"/>
+  <text x="150" y="46" class="txt-s" fill="#A32C24">слишком сильно — раскачка</text>
+</svg>
+<figcaption>Пропорциональная часть одна оставляет постоянную ошибку. Интегральная её убирает. Слишком большое усиление раскачивает систему.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<tr><th>Часть</th><th>На что смотрит</th><th>Что даёт</th><th>Перебор приводит к</th></tr>
+<tr><td>P — пропорциональная</td><td>На текущую ошибку</td><td>Основную реакцию, скорость</td><td>Колебаниям, раскачке</td></tr>
+<tr><td>I — интегральная</td><td>На накопленную ошибку</td><td>Точный выход на уставку</td><td>Медленной раскачке, перерегулированию</td></tr>
+<tr><td>D — дифференциальная</td><td>На скорость изменения</td><td>Предупреждение выброса</td><td>Реакции на шум, дёрганью выхода</td></tr>
+</table>
+</div>
+
+<h3>Аналогия для запоминания</h3>
+<p>Ты подъезжаешь к светофору. <strong>P</strong> — жмёшь на тормоз тем сильнее, чем дальше до нужной точки. <strong>I</strong> — замечаешь, что раз за разом недотягиваешь полметра, и начинаешь тормозить чуть позже. <strong>D</strong> — видишь, что подъезжаешь слишком быстро, и отпускаешь газ заранее, не дожидаясь, пока станет поздно.</p>
+
+<h3>Практика настройки</h3>
+
+<ol>
+  <li><strong>Сначала автонастройка.</strong> У Siemens это блок PID_Compact с функцией самонастройки при пуске и в рабочей точке. Она даёт рабочие коэффициенты в большинстве случаев, и начинать нужно с неё, а не с ручного подбора.</li>
+  <li><strong>Если вручную:</strong> обнули I и D, поднимай P до появления слабых колебаний, затем уменьши примерно вдвое. Добавляй I, пока установившаяся ошибка не исчезнет. D в большинстве задач вообще не включают.</li>
+  <li><strong>D почти всегда лишний.</strong> В температуре, давлении и уровне он вредит, потому что усиливает шум измерения. PI покрывает подавляющее большинство промышленных задач.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Ограничение интегральной части</span>
+Если исполнительный механизм упёрся в предел, а ошибка сохраняется — клапан открыт полностью, но давление не растёт из-за закрытой задвижки, — интегральная часть продолжает накапливаться. Когда причина устранится, регулятор долго будет выходить из перенасыщения, а процесс сильно перескочит уставку. Это называется интегральным насыщением, и защита от него встроена в фирменные блоки. При самописном регуляторе её нужно делать самому: ограничивать накопленную сумму.
+</div>
+
+<h3>Где ПИД не нужен</h3>
+<p>Не усложняй там, где хватает простого. Вентилятор вытяжки, насос долива в бак, нагрев с большой инерцией — двухпозиционное регулирование с гистерезисом работает годами и не требует настройки. ПИД нужен там, где колебания недопустимы: точная температура, натяжение, синхронизация скоростей.</p>
+
+<div class="task">
+<span class="lbl">Задание 8</span>
+Регулятор температуры настроен, но при загрузке холодной партии в печь температура сначала проваливается, потом сильно перескакивает уставку и долго успокаивается. Какая составляющая настроена неверно и в какую сторону её менять?
+</div>
+
+<!-- ============ ГЛАВА 9 ============ -->
+<h2 id="g9" data-n="Глава 09">Поиск неисправности на объекте</h2>
+
+<p>Это то, ради чего писались предыдущие тома. Линия встала, смена стоит, вокруг тебя технолог и мастер. Нужен порядок действий, а не догадки.</p>
+
+<figure>
+<svg viewBox="0 0 800 380" role="img" aria-label="Алгоритм поиска неисправности">
+  <text x="400" y="22" text-anchor="middle" class="txt-hi">ПОРЯДОК ДЕЙСТВИЙ</text>
+
+  <rect x="270" y="40" width="260" height="36" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="63" text-anchor="middle" class="txt-m">1 · Прочитать сообщение на панели</text>
+  <path d="M400 76 V96" stroke="#1E2422" stroke-width="2" fill="none"/>
+
+  <rect x="270" y="96" width="260" height="36" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="119" text-anchor="middle" class="txt-m">2 · Посмотреть светодиоды CPU</text>
+  <path d="M400 132 V152" stroke="#1E2422" stroke-width="2" fill="none"/>
+
+  <rect x="270" y="152" width="260" height="36" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="175" text-anchor="middle" class="txt-m">3 · Диагностический буфер</text>
+  <path d="M400 188 V208" stroke="#1E2422" stroke-width="2" fill="none"/>
+
+  <rect x="270" y="208" width="260" height="36" rx="4" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="400" y="231" text-anchor="middle" class="txt-m" fill="#1C6B4C">4 · Онлайн-мониторинг программы</text>
+  <path d="M400 244 V264" stroke="#1E2422" stroke-width="2" fill="none"/>
+
+  <rect x="270" y="264" width="260" height="36" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="287" text-anchor="middle" class="txt-m">5 · Светодиод канала на модуле</text>
+  <path d="M400 300 V320" stroke="#1E2422" stroke-width="2" fill="none"/>
+
+  <rect x="270" y="320" width="260" height="36" rx="4" fill="#F6E1DC" stroke="#A32C24" stroke-width="1.5"/>
+  <text x="400" y="343" text-anchor="middle" class="txt-m" fill="#A32C24">6 · Мультиметр в поле</text>
+
+  <text x="120" y="200" text-anchor="middle" class="txt-s">Сверху вниз:</text>
+  <text x="120" y="220" text-anchor="middle" class="txt-s">от быстрого</text>
+  <text x="120" y="240" text-anchor="middle" class="txt-s">к трудоёмкому</text>
+  <text x="680" y="200" text-anchor="middle" class="txt-s">Не прыгай сразу</text>
+  <text x="680" y="220" text-anchor="middle" class="txt-s">к шестому шагу —</text>
+  <text x="680" y="240" text-anchor="middle" class="txt-s">это самый долгий</text>
+</svg>
+<figcaption>Порядок не случаен: каждый следующий шаг дороже по времени. Половина неисправностей находится на первых трёх.</figcaption>
+</figure>
+
+<h3>Ключевой приём: сравнить программу с полем</h3>
+
+<p>Онлайн-мониторинг показывает, что <strong>думает</strong> контроллер. Светодиод на модуле показывает, что происходит <strong>физически</strong>. Расхождение между ними мгновенно указывает, где искать.</p>
+
+<div class="tw">
+<table>
+<tr><th>Светодиод канала</th><th>Программа</th><th>Где неисправность</th></tr>
+<tr><td>горит</td><td>видит 1</td><td>Поле в порядке — проблема в логике программы</td></tr>
+<tr><td>горит</td><td>видит 0</td><td>Ошибка адресации или конфигурации модуля</td></tr>
+<tr><td>не горит</td><td>видит 0</td><td>Проблема в поле: датчик, кабель, питание 24 В</td></tr>
+<tr><td>не горит</td><td>видит 1</td><td>Значение принудительно задано или переписано в программе</td></tr>
+</table>
+</div>
+
+<p>Последняя строка заслуживает отдельного внимания. Если наладчик оставил <strong>принудительное значение</strong> (Force), контроллер игнорирует реальный вход. У Siemens при активном форсировании горит соответствующий индикатор — это первое, что нужно проверить, когда поведение линии противоречит здравому смыслу.</p>
+
+<h3>Типовые неисправности и их признаки</h3>
+
+<div class="tw">
+<table>
+<tr><th>Симптом</th><th>Вероятная причина</th><th>Проверка</th></tr>
+<tr><td>CPU в STOP, горит ERROR</td><td>Ошибка программы или отказ модуля</td><td>Диагностический буфер — там точная причина и время</td></tr>
+<tr><td>Станция сети недоступна</td><td>Обрыв, питание, имя устройства</td><td>Светодиоды станции, затем топология сети</td></tr>
+<tr><td>Один вход не работает</td><td>Датчик, кабель, предохранитель 24 В</td><td>Мультиметр между клеммой и M</td></tr>
+<tr><td>Всё встало без сообщений</td><td>Питание 24 В или аварийная цепь</td><td>Блок питания, реле безопасности, грибки</td></tr>
+<tr><td>Работает через раз</td><td>Помехи, экраны, дребезг, ослабший контакт</td><td>Прокладка кабелей, затяжка клемм</td></tr>
+<tr><td>Сбоит после установки нового оборудования</td><td>Наводки от нового источника</td><td>Экраны, разделение трасс</td></tr>
+</table>
+</div>
+
+<div class="note ok">
+<span class="lbl">Диагностический буфер — недооценённый инструмент</span>
+В CPU хранится журнал последних событий с точным временем: когда ушёл в STOP, из-за какого блока, какая станция пропала и когда вернулась. Это позволяет разобрать ночной сбой утром, ничего не воспроизводя. Первое, что делает опытный наладчик после подключения ноутбука, — открывает буфер, а не программу. Смотри его до того, как что-то перезапускать: перезапуск часть информации затирает.
+</div>
+
+<div class="note danger">
+<span class="lbl">Правило безопасности при поиске</span>
+Изменение программы на работающей линии, принудительная установка выходов, отключение блокировок «на минуточку проверить» — то, чем травмируют людей. Механизм не знает, что ты «просто смотришь». Прежде чем форсировать выход, убедись, что в зоне движения никого нет и предупреди смену. Форсирование отменяй сразу после проверки — забытый Force уходит в работу и всплывает через недели самым неожиданным образом.
+</div>
+
+<!-- ============ ГЛАВА 10 ============ -->
+<h2 id="g10" data-n="Глава 10">Пусконаладка: порядок работ</h2>
+
+<p>Пусконаладка — это не «загрузил программу и поехали». Это последовательность, где каждый шаг подтверждает предыдущий. Нарушение порядка приводит к поломкам оборудования и травмам.</p>
+
+<h3>Этапы</h3>
+
+<ol>
+  <li><strong>Проверка монтажа при снятом питании.</strong> Прозвонка по схеме, затяжка клемм, наличие и правильность заземления, экраны. Отдельно — что силовые кабели не перепутаны местами с сигнальными.</li>
+  <li><strong>Подача питания на управление.</strong> Только 24 В, силовая часть отключена. Проверка блока питания под нагрузкой, отсутствие просадок.</li>
+  <li><strong>Проверка цепей безопасности.</strong> До всего остального. Каждый грибок, каждый дверной выключатель, каждый световой барьер проверяется физическим нажатием с контролем размыкания контактора. Результаты записываются в протокол.</li>
+  <li><strong>Проверка входов.</strong> Каждый датчик приводится в действие рукой, проверяется светодиод и значение в программе. Заодно подтверждается таблица I/O.</li>
+  <li><strong>Проверка выходов при отключённой силовой части.</strong> Форсирование каждого выхода с контролем срабатывания промежуточного реле и катушки контактора.</li>
+  <li><strong>Первое движение — в ручном режиме, на малой скорости, поодиночке.</strong> Проверка направления вращения, работы концевиков, отсутствия механических помех.</li>
+  <li><strong>Автоматический цикл вхолостую.</strong> Без продукта, с готовностью нажать стоп.</li>
+  <li><strong>Цикл с продуктом на рабочей скорости.</strong></li>
+  <li><strong>Проверка отказов.</strong> Специально имитируются: пропадание давления, обрыв датчика, аварийный стоп в середине цикла, отключение и восстановление питания. Проверяется, что машина реагирует безопасно и корректно возвращается в исходное.</li>
+  <li><strong>Передача:</strong> обучение персонала, актуальная документация, резервная копия проекта заказчику.</li>
+</ol>
+
+<div class="note danger">
+<span class="lbl">Шаг, который пропускают чаще всего</span>
+Девятый. Программа проверена на нормальном ходе событий и передана — а что произойдёт при обрыве кабеля датчика в середине цикла, никто не пробовал. Именно эти сценарии всплывают потом ночью, в самый неподходящий момент, и именно на них ломается оборудование. Заложи на проверку отказов отдельное время в графике и не отдавай его под сокращение сроков.
+</div>
+
+<h3>Чек-лист перед выездом на объект</h3>
+<div class="rung">Документы
+  [ ] Электрическая схема, актуальная версия
+  [ ] Таблица I/O с адресами и типом контакта (NO/NC)
+  [ ] Резервная копия проекта ПЛК и панели
+  [ ] Версия среды заказчика выяснена и совпадает
+
+Оборудование
+  [ ] Ноутбук с установленной нужной версией
+  [ ] Кабель PROFINET и переходники
+  [ ] Мультиметр, отвёртки, набор для клемм
+  [ ] Средства защиты по правилам объекта
+
+Организация
+  [ ] Кто отвечает за безопасность на участке
+  [ ] Согласовано время остановки линии
+  [ ] Известно, где аварийные отключения
+  [ ] Есть контакт технолога, знающего процесс</div>
+
+<h3>Шпаргалка по сетям</h3>
+<div class="tw">
+<table>
+<tr><th>Сеть</th><th>Кабель</th><th>Признак на объекте</th><th>Первое при отказе</th></tr>
+<tr><td>PROFIBUS</td><td>фиолетовый, D-Sub</td><td>Терминаторы на концах</td><td>Терминаторы, адреса, экран</td></tr>
+<tr><td>PROFINET</td><td>зелёный, RJ45 / M12-D</td><td>Порты P1, P2 на устройствах</td><td>Имя устройства, линк, топология</td></tr>
+<tr><td>Modbus RTU</td><td>витая пара RS-485</td><td>Клеммы A и B</td><td>Скорость, адрес, смещение регистров</td></tr>
+<tr><td>IO-Link</td><td>обычный 3-проводный M12</td><td>Порт с маркировкой IO-Link</td><td>Режим порта, длина кабеля</td></tr>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">Мысль напоследок</span>
+Разница между монтажником и наладчиком не в знании программы. Она в способности за пять минут понять, где именно проблема: в поле, в шкафу, в сети или в логике. Для этого нужно держать в голове всю цепочку — от контакта датчика до строки в программе — и уметь проверить каждое звено. Первые три тома дали тебе эту цепочку целиком. Четвёртый добавил то, что лежит между шкафом и механизмом.
+</div>
+
+<div class="end">
+<p><strong>Конец четвёртого тома.</strong> Дальше — Том 5 «Профессия»: архитектура больших программ, режимы работы и обработка аварий как система, функциональная безопасность и PROFIsafe, SCADA и сбор данных, документирование и передача проекта, сертификация и карьерный путь.</p>
+<p>Перед переходом пройди по знакомой линии на своём объекте и разбери её по этому тому: какие сети, какая топология, как подключены приводы, что показывает панель. Это упражнение стоит больше, чем ещё один прочитанный том.</p>
+</div>
+
+</div>
+
+</body></html>

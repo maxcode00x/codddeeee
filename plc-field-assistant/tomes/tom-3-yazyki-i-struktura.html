@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ПЛК от новичка до профи · Том 3. Языки и структура</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --panel:#EFF1EB; --panel-2:#E3E8DF; --rail:#D5DCD1; --line:#B5C0B2;
+  --ink:#1E2422; --dim:#515B54;
+  --brown:#8A5522; --blue:#1F5391; --safety:#A87400; --live:#1C6B4C; --alarm:#A32C24;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--panel);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;line-height:1.65;padding-bottom:80px}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px}
+/* --- обложка --- */
+.cover{min-height:78vh;display:flex;flex-direction:column;justify-content:center;
+  border-bottom:3px solid var(--safety);
+  background:repeating-linear-gradient(135deg,rgba(168,116,0,.09) 0 14px,transparent 14px 28px),
+    radial-gradient(circle at 78% 22%,rgba(28,107,76,.09),transparent 55%),var(--panel-2);
+  padding:70px 0 50px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--safety);margin:0 0 14px}
+.cover h1{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:700;
+  font-size:clamp(40px,11vw,84px);line-height:.94;letter-spacing:.01em;margin:0;text-transform:uppercase}
+.cover h1 em{font-style:normal;color:var(--safety);display:block}
+.cover .sub{font-size:18px;color:var(--dim);max-width:560px;margin:22px 0 0}
+.tomtag{display:inline-block;border:2px solid var(--safety);color:var(--safety);
+  font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:20px;letter-spacing:.08em;
+  padding:4px 14px;text-transform:uppercase;margin-bottom:26px}
+/* --- оглавление --- */
+.toc{background:var(--panel-2);border:1px solid var(--line);padding:24px;margin:46px 0}
+.toc h2{margin:0 0 14px;font-size:22px;border:0;padding:0}
+.toc h2::before{content:none}
+.toc ol{list-style:none;counter-reset:c;padding:0;margin:0}
+.toc li{counter-increment:c;border-bottom:1px dashed var(--line);padding:9px 0}
+.toc li:last-child{border:0}
+.toc li::before{content:counter(c,decimal-leading-zero);font-family:"IBM Plex Mono",monospace;
+  font-size:12px;color:var(--safety);margin-right:12px}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+.toc a:hover,.toc a:focus{border-bottom-color:var(--safety);color:#141917}
+/* --- типографика --- */
+h2{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:clamp(28px,6vw,38px);
+  text-transform:uppercase;letter-spacing:.02em;margin:70px 0 8px;padding-top:22px;
+  border-top:2px solid var(--line)}
+h2::before{content:attr(data-n);font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--safety);display:block;letter-spacing:.2em;margin-bottom:8px;font-weight:500}
+h3{font-family:"Barlow Condensed",sans-serif;font-size:24px;text-transform:uppercase;
+  letter-spacing:.03em;margin:38px 0 4px}
+h4{font-family:"Barlow Condensed",sans-serif;font-size:19px;letter-spacing:.03em;margin:24px 0 2px;color:var(--safety)}
+p{margin:12px 0}
+strong{color:#141917;font-weight:600}
+ul,ol{padding-left:22px}li{margin:7px 0}
+code{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;padding:2px 6px;
+  border-radius:2px;font-size:.88em;color:var(--safety)}
+/* --- схемы --- */
+figure{margin:28px 0;background:var(--panel-2);border:1px solid var(--line);padding:18px 14px 12px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);line-height:1.55}
+.txt-s{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#515B54;letter-spacing:.04em}
+.txt-m{font-family:"IBM Plex Mono",monospace;font-size:13px;fill:#1E2422}
+.txt-hi{font-family:"Barlow Condensed",sans-serif;font-size:16px;fill:#1E2422;font-weight:600;letter-spacing:.04em}
+/* --- таблицы --- */
+.tw{overflow-x:auto;margin:22px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:460px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--rail);font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;
+  letter-spacing:.06em;font-size:15px;font-weight:600}
+td:first-child{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--safety);white-space:nowrap}
+/* --- врезки --- */
+.note{border-left:3px solid var(--safety);background:var(--panel-2);padding:14px 16px;margin:24px 0}
+.note.danger{border-left-color:var(--alarm)}
+.note.ok{border-left-color:var(--live)}
+.note .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:5px}
+.note.danger .lbl{color:var(--alarm)}.note.ok .lbl{color:var(--live)}
+.formula{font-family:"IBM Plex Mono",monospace;background:#E3E8DF;border:1px solid var(--line);
+  padding:14px 16px;font-size:13.5px;overflow-x:auto;margin:18px 0;color:var(--live);white-space:pre}
+.task{border:1px dashed var(--safety);padding:18px;margin:34px 0;background:rgba(168,116,0,.06)}
+.task .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--safety);display:block;margin-bottom:8px}
+.gloss dt{font-family:"IBM Plex Mono",monospace;color:var(--safety);font-size:14px;margin-top:14px}
+.gloss dd{margin:2px 0 0;padding-left:0;color:var(--ink)}
+.end{margin-top:70px;padding-top:24px;border-top:2px solid var(--safety);color:var(--dim);font-size:14px}
+@media(max-width:560px){body{font-size:15px}figure{padding:12px 8px 10px}}
+@media(prefers-reduced-motion:no-preference){
+  .pulse{animation:p 2.6s ease-in-out infinite}@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}}
+
+/* --- том 2: листинги и диаграммы --- */
+.rung{font-family:"IBM Plex Mono",monospace;background:#E8EDE4;border:1px solid var(--line);
+  padding:12px 14px;margin:14px 0;font-size:13px;line-height:1.85;overflow-x:auto;white-space:pre}
+.rung b{color:var(--safety);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:14px 0 0;padding:0;list-style:none;
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--dim)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:20px;height:3px;border-radius:2px;display:inline-block}
+.tt{width:auto;min-width:0;font-size:13px}
+.tt td,.tt th{text-align:center;padding:6px 14px}
+.state{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);
+  border-left:2px solid var(--line);padding-left:10px;margin:10px 0}
+</style>
+</head><body>
+<section class="cover">
+  <div class="wrap">
+    <span class="tomtag">Том 3</span>
+    <p class="eyebrow">ПЛК от новичка до профи · курс для электрика</p>
+    <h1>Языки<em>и структура проекта</em></h1>
+    <p class="sub">Пять языков стандарта IEC 61131-3, Structured Text и FBD, блоки OB, FB, FC и DB, устройство проекта в TIA Portal и CODESYS. И как начать программировать, не купив ни одной железки.</p>
+  </div>
+</section>
+
+<div class="wrap">
+
+<div class="toc">
+  <h2>Содержание тома</h2>
+  <ol>
+    <li><a href="#g1">Пять языков стандарта IEC 61131-3</a></li>
+    <li><a href="#g2">Structured Text: текст вместо контактов</a></li>
+    <li><a href="#g3">FBD: логика блоками</a></li>
+    <li><a href="#g4">SFC: пошаговые последовательности</a></li>
+    <li><a href="#g5">Типы данных и переменные</a></li>
+    <li><a href="#g6">Блоки Siemens: OB, FB, FC, DB</a></li>
+    <li><a href="#g7">То же самое в CODESYS</a></li>
+    <li><a href="#g8">Как начать без железа</a></li>
+    <li><a href="#g9">Первый проект: конвейер как блок</a></li>
+    <li><a href="#g10">Шпаргалки и словарь терминов</a></li>
+  </ol>
+</div>
+
+<!-- ============ ГЛАВА 1 ============ -->
+<h2 id="g1" data-n="Глава 01">Пять языков стандарта IEC 61131-3</h2>
+
+<p>Стандарт IEC 61131-3 (в России ГОСТ Р МЭК 61131-3) описывает пять языков программирования контроллеров. Придумали его не для разнообразия, а чтобы прекратить хаос: до стандарта каждый производитель делал свой язык, и программист, знавший Siemens, не мог прочитать программу Allen-Bradley.</p>
+
+<p>Главное, что нужно понять сразу: <strong>это не пять разных инструментов для пяти разных задач</strong>. Это пять способов записать одно и то же. Внутри контроллера всё равно выполняется машинный код, и логику «мотор работает, если нажат пуск и не нажат стоп» можно записать любым из них.</p>
+
+<figure>
+<svg viewBox="0 0 800 340" role="img" aria-label="Одна и та же логика на трёх языках IEC 61131-3">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ОДНА ЛОГИКА, ТРИ ЗАПИСИ</text>
+  <text x="400" y="46" text-anchor="middle" class="txt-s">Мотор работает, если нажат пуск И не нажат стоп</text>
+
+  <!-- LAD -->
+  <rect x="30" y="66" width="740" height="76" rx="4" fill="#E3E8DF" stroke="#B5C0B2"/>
+  <text x="48" y="88" class="txt-m" fill="#A87400">LAD · релейная логика</text>
+  <path d="M60 118 H130" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M130 108 V128 M140 118 H186" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M186 108 V128" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <text x="158" y="103" text-anchor="middle" class="txt-s">Pusk</text>
+  <path d="M186 118 H250" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M250 108 V128 M260 118 H306" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M306 108 V128" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M248 130 L308 106" stroke="#A32C24" stroke-width="2" fill="none"/>
+  <text x="278" y="103" text-anchor="middle" class="txt-s">Stop</text>
+  <path d="M306 118 H400" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <circle cx="414" cy="118" r="12" fill="none" stroke="#1C6B4C" stroke-width="2.5"/>
+  <text x="414" y="103" text-anchor="middle" class="txt-s">Motor</text>
+  <text x="520" y="122" class="txt-s">видно «ток», понятно электрику</text>
+
+  <!-- FBD -->
+  <rect x="30" y="152" width="740" height="90" rx="4" fill="#E3E8DF" stroke="#B5C0B2"/>
+  <text x="48" y="174" class="txt-m" fill="#A87400">FBD · функциональные блоки</text>
+  <rect x="200" y="188" width="90" height="44" rx="3" fill="#EFF1EB" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="245" y="215" text-anchor="middle" class="txt-m">AND</text>
+  <path d="M120 200 H200" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M120 222 H200" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <text x="116" y="204" text-anchor="end" class="txt-s">Pusk</text>
+  <text x="116" y="226" text-anchor="end" class="txt-s">Stop</text>
+  <circle cx="195" cy="222" r="5" fill="none" stroke="#A32C24" stroke-width="1.5"/>
+  <path d="M290 210 H370" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <text x="378" y="214" class="txt-s">Motor</text>
+  <text x="520" y="214" class="txt-s">кружок на входе — инверсия</text>
+
+  <!-- ST -->
+  <rect x="30" y="252" width="740" height="76" rx="4" fill="#E3E8DF" stroke="#B5C0B2"/>
+  <text x="48" y="274" class="txt-m" fill="#A87400">ST · структурированный текст</text>
+  <text x="60" y="304" class="txt-m" fill="#1C6B4C">Motor := Pusk AND NOT Stop;</text>
+  <text x="520" y="304" class="txt-s">компактно, как обычный код</text>
+</svg>
+<figcaption>Одно условие, записанное тремя способами. Контроллер выполнит их совершенно одинаково.</figcaption>
+</figure>
+
+<h3>Что представляет собой каждый язык</h3>
+
+<div class="tw">
+<table>
+<tr><th>Язык</th><th>Тип</th><th>Сильная сторона</th><th>Где встретишь</th></tr>
+<tr><td>LAD</td><td>графический</td><td>Наглядность, привычен электрику, легко отлаживать вживую</td><td>Дискретная логика, 70 % программ на объектах</td></tr>
+<tr><td>FBD</td><td>графический</td><td>Хорош для аналоговой обработки и цепочек блоков</td><td>Регулирование, обработка сигналов</td></tr>
+<tr><td>ST</td><td>текстовый</td><td>Расчёты, циклы, работа с массивами и строками</td><td>Математика, рецепты, обмен данными</td></tr>
+<tr><td>SFC</td><td>графический</td><td>Описание последовательности шагов машины</td><td>Циклические машины, упаковка, розлив</td></tr>
+<tr><td>IL</td><td>текстовый</td><td>Практически не используется, объявлен устаревшим</td><td>Старые проекты, наследие</td></tr>
+</table>
+</div>
+
+<p><strong>IL (Instruction List)</strong> — это ассемблер для ПЛК, список коротких команд. В новых версиях стандарта он признан устаревшим, и учить его смысла нет. У Siemens есть родственник — STL, который встречается в старых программах S7-300/400. Если увидишь на объекте — просто знай, что это такое.</p>
+
+<h3>С чего начинать именно тебе</h3>
+
+<p>Учитывая, что ты пришёл из электрики и работаешь на объектах, где стоит Siemens, порядок такой:</p>
+
+<ol>
+  <li><strong>LAD — основной язык.</strong> Он ближе всего к тому, что ты уже умеешь, и им написано большинство программ, которые ты увидишь на линиях. Второй том целиком про него.</li>
+  <li><strong>FBD — по мере надобности.</strong> Осваивается за вечер, если знаешь LAD. Нужен, когда пойдёт аналоговая обработка и регулирование.</li>
+  <li><strong>ST — обязательно, но позже.</strong> Как только логика перерастёт кнопки и появятся расчёты, масштабирование, обработка массивов — LAD станет громоздким. Тогда ST экономит часы.</li>
+  <li><strong>SFC — по ситуации.</strong> Полезен, если работаешь с машинами, у которых явный цикл: захват, перемещение, отпускание, возврат.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Практика объектов</span>
+Реальные проекты обычно <strong>смешанные</strong>. Дискретная логика и блокировки — на LAD, потому что наладчику ночью на линии проще смотреть, где «не проходит ток». Обработка аналоговых сигналов и математика — на ST или FBD. Стандарт это разрешает: разные блоки одного проекта могут быть написаны на разных языках.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 1</span>
+На линии нужно: посчитать среднее значение температуры по четырём датчикам, включить нагрев при отклонении, а также сделать блокировку «не греть при открытой крышке». Какие части задачи логично писать на LAD, а какие на ST? Обоснуй.
+</div>
+
+<!-- ============ ГЛАВА 2 ============ -->
+<h2 id="g2" data-n="Глава 02">Structured Text: текст вместо контактов</h2>
+
+<p>ST похож на Паскаль, а если ты видел любой язык программирования — узнаешь общие черты. Разберём по частям, без предварительных знаний.</p>
+
+<h3>Присваивание</h3>
+
+<p>Основная операция. Знак присваивания в ST — это <code>:=</code>, двоеточие с равно. Обычное <code>=</code> означает сравнение, и путать их нельзя.</p>
+
+<div class="rung">Motor := TRUE;                       записать в переменную единицу
+Motor := Pusk AND NOT Stop;          записать результат логики
+Davlenie_bar := Syroe_znachenie / 1728.0;   расчёт
+
+Каждая строка заканчивается точкой с запятой. Забыл — ошибка компиляции.</div>
+
+<h3>Логические операции</h3>
+
+<p>Те же, что в предыдущем томе, только словами: <code>AND</code>, <code>OR</code>, <code>NOT</code>, <code>XOR</code>. Скобки работают как в математике и задают порядок.</p>
+
+<div class="rung">Puskat := (Rezhim_avto OR Rezhim_ruchnoy) AND Davlenie_OK AND NOT Avariya;
+
+Скобки здесь принципиальны: без них AND выполнится раньше OR
+и условие получится совсем другим.</div>
+
+<h3>Условие IF</h3>
+
+<div class="rung">IF Davlenie &lt; 5.0 THEN
+    Avariya_davlenie := TRUE;
+    Motor := FALSE;
+END_IF;
+
+
+IF Uroven &gt; 90.0 THEN
+    Nasos := FALSE;
+ELSIF Uroven &lt; 20.0 THEN
+    Nasos := TRUE;
+ELSE
+    ;                      ничего не делаем, состояние сохраняется
+END_IF;</div>
+
+<p>Конструкция читается дословно: если условие, то делать это, иначе если другое условие — то другое, иначе — остальное. <code>ELSIF</code> пишется слитно, без второго E — частая опечатка новичка.</p>
+
+<h3>Выбор CASE</h3>
+
+<p>Когда вариантов много, вместо лестницы из IF используют CASE. Это основной инструмент для пошаговых циклов машины.</p>
+
+<div class="rung">CASE Shag OF
+    0:   IF Start THEN Shag := 10; END_IF;
+
+    10:  Zazhim := TRUE;
+         IF Zazhim_konchevik THEN Shag := 20; END_IF;
+
+    20:  Sverlo_vniz := TRUE;
+         IF Sverlo_nizhniy THEN Shag := 30; END_IF;
+
+    30:  Sverlo_vniz := FALSE;
+         IF Sverlo_verhniy THEN Shag := 40; END_IF;
+
+    40:  Zazhim := FALSE;
+         Shag := 0;
+
+ELSE
+    Shag := 0;             защита от неизвестного состояния
+END_CASE;</div>
+
+<p>Это полноценный пошаговый автомат на десять строк. На LAD то же самое заняло бы два экрана цепей с Set и Reset. Номера шагов дают с запасом (10, 20, 30), чтобы потом можно было вставить промежуточный шаг 15, ничего не перенумеровывая.</p>
+
+<h3>Циклы</h3>
+
+<p>Цикл повторяет действие несколько раз. В ПЛК это чаще всего обработка массива: проверить все датчики, сложить все значения, найти максимум.</p>
+
+<div class="rung">Summa := 0;
+FOR i := 1 TO 10 DO
+    Summa := Summa + Temperatura[i];
+END_FOR;
+Srednee := Summa / 10.0;</div>
+
+<div class="note danger">
+<span class="lbl">Цикл в ПЛК — источник главной аварии</span>
+Помни цикл сканирования из первого тома: программа обязана завершиться за отведённое время. Если написать <code>WHILE</code>, условие которого никогда не станет ложным, сработает сторожевой таймер и <strong>CPU уйдёт в STOP</strong>, а линия встанет. Поэтому в ПЛК предпочитают <code>FOR</code> с явным числом повторений и избегают <code>WHILE</code> и <code>REPEAT</code>. Если WHILE всё-таки нужен, обязательно добавляй счётчик-предохранитель, который прервёт цикл после разумного числа проходов.
+</div>
+
+<h3>Вызов функциональных блоков</h3>
+
+<p>Таймеры и счётчики в ST вызываются как блоки, с указанием экземпляра — об экземплярах подробно в шестой главе.</p>
+
+<div class="rung">Taymer_pusk( IN := Zapros_puska, PT := T#5s );
+
+IF Taymer_pusk.Q THEN
+    Konveyer := TRUE;
+END_IF;
+
+Ostatok := Taymer_pusk.ET;    сколько уже отсчитано, для панели оператора</div>
+
+<h3>Комментарии</h3>
+
+<div class="rung">(* Классический комментарий стандарта,
+   может занимать несколько строк *)
+
+// Однострочный комментарий, поддерживается почти везде</div>
+
+<div class="note ok">
+<span class="lbl">Почему ST стоит выучить, даже если пишешь на LAD</span>
+Три причины. Первая: расчёты. Масштабирование аналогового сигнала, ПИД, статистика на LAD выглядят чудовищно. Вторая: пошаговые циклы через CASE — самый читаемый способ описать машину. Третья: чужой код. Библиотеки, примеры производителей и готовые блоки почти всегда написаны на ST, и уметь их прочитать нужно, даже если сам пишешь контактами.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 2</span>
+Перепиши на ST логику из второго тома: конвейер пускается при нажатии пуска, если давление больше 5 бар и коробка не полна, останавливается по стопу. Используй самоподхват. Подсказка: самоподхват в ST — это когда переменная участвует в собственном условии.
+</div>
+<!-- ============ ГЛАВА 3 ============ -->
+<h2 id="g3" data-n="Глава 03">FBD: логика блоками</h2>
+
+<p>FBD (Function Block Diagram, функциональные блок-схемы) — это логика, нарисованная прямоугольниками. Сигналы входят слева, выходят справа, блоки соединяются линиями. Если ты видел схемы на микросхемах серии 155 или логические элементы в учебнике электроники — это оно.</p>
+
+<figure>
+<svg viewBox="0 0 800 300" role="img" aria-label="Пример схемы на языке FBD">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">УПРАВЛЕНИЕ НАСОСОМ НА FBD</text>
+
+  <!-- OR -->
+  <rect x="150" y="60" width="86" height="56" rx="3" fill="#EFF1EB" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="193" y="94" text-anchor="middle" class="txt-m">&gt;=1</text>
+  <text x="193" y="52" text-anchor="middle" class="txt-s">ИЛИ</text>
+  <path d="M60 76 H150 M60 100 H150" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <text x="56" y="80" text-anchor="end" class="txt-s">Rezhim_avto</text>
+  <text x="56" y="104" text-anchor="end" class="txt-s">Rezhim_ruch</text>
+
+  <!-- AND -->
+  <rect x="340" y="72" width="86" height="120" rx="3" fill="#EFF1EB" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="383" y="138" text-anchor="middle" class="txt-m">&amp;</text>
+  <text x="383" y="64" text-anchor="middle" class="txt-s">И</text>
+  <path d="M236 88 H340" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M240 124 H340" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M240 160 H335" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <text x="236" y="118" text-anchor="end" class="txt-s">Davlenie_OK</text>
+  <text x="236" y="154" text-anchor="end" class="txt-s">Avariya</text>
+  <circle cx="336" cy="160" r="5" fill="none" stroke="#A32C24" stroke-width="1.5"/>
+
+  <!-- SR -->
+  <rect x="530" y="92" width="110" height="80" rx="3" fill="#EFF1EB" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="585" y="118" text-anchor="middle" class="txt-s">RS</text>
+  <text x="546" y="140" class="txt-s">S</text>
+  <text x="546" y="162" class="txt-s">R1</text>
+  <text x="628" y="140" text-anchor="end" class="txt-s">Q</text>
+  <path d="M426 132 H530" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M470 210 H500 V156 H530" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <text x="466" y="214" text-anchor="end" class="txt-s">Stop</text>
+  <path d="M640 132 H730" stroke="#1C6B4C" stroke-width="2.5" fill="none"/>
+  <text x="736" y="136" class="txt-s" fill="#1C6B4C">Nasos</text>
+
+  <text x="400" y="256" text-anchor="middle" class="txt-s">Кружок на входе или выходе блока означает инверсию — это тот же контакт NC</text>
+  <text x="400" y="278" text-anchor="middle" class="txt-s">Обозначения по стандарту: &amp; для И, &gt;=1 для ИЛИ, =1 для исключающего ИЛИ</text>
+</svg>
+<figcaption>Сигнал идёт слева направо через блоки. Читается как принципиальная схема, только вместо элементов — логические функции.</figcaption>
+</figure>
+
+<h3>Когда FBD удобнее LAD</h3>
+
+<p>На чистой дискретной логике LAD и FBD равноценны — дело привычки. Но есть области, где FBD выигрывает заметно:</p>
+
+<ul>
+  <li><strong>Аналоговая обработка.</strong> Цепочка «сырое значение → масштабирование → фильтр → ограничение → ПИД → выход» на FBD выглядит как технологическая схема и читается за секунды. На LAD это будет набор блоков, вставленных в цепи, между которыми теряется связь.</li>
+  <li><strong>Готовые блоки производителя.</strong> Библиотечные функции для приводов, весов, температурных регуляторов почти всегда нарисованы как FBD-блоки с десятком входов и выходов.</li>
+  <li><strong>Много входов у одной функции.</strong> Блок с восемью входами в FBD — обычное дело, в LAD это восемь контактов подряд, которые не помещаются на экран.</li>
+</ul>
+
+<div class="note">
+<span class="lbl">Переключение на лету</span>
+В TIA Portal один и тот же блок можно переключать между LAD и FBD одной кнопкой — представление меняется, логика остаётся. Это удобно: написал в привычном LAD, посмотрел в FBD, понял структуру. Обратно в LAD переключается не всегда — если в FBD использованы конструкции, не выражаемые контактами, среда откажет.
+</div>
+
+<!-- ============ ГЛАВА 4 ============ -->
+<h2 id="g4" data-n="Глава 04">SFC: пошаговые последовательности</h2>
+
+<p>SFC (Sequential Function Chart, последовательные функциональные схемы) описывает не логику, а <strong>порядок действий</strong>. Это блок-схема цикла машины: сделали шаг, дождались условия, перешли к следующему.</p>
+
+<figure>
+<svg viewBox="0 0 800 400" role="img" aria-label="Пример последовательности на языке SFC">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">ЦИКЛ СВЕРЛИЛЬНОГО СТАНКА НА SFC</text>
+
+  <!-- начальный шаг -->
+  <rect x="330" y="46" width="140" height="40" fill="#E3E8DF" stroke="#1E2422" stroke-width="2.5"/>
+  <rect x="336" y="52" width="128" height="28" fill="none" stroke="#1E2422" stroke-width="1"/>
+  <text x="400" y="72" text-anchor="middle" class="txt-m">Шаг 0 · Исходное</text>
+
+  <path d="M400 86 V112" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M380 112 H420" stroke="#1E2422" stroke-width="3" fill="none"/>
+  <text x="432" y="116" class="txt-s" fill="#A87400">Start И деталь на месте</text>
+
+  <rect x="330" y="124" width="140" height="40" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="150" text-anchor="middle" class="txt-m">Шаг 10 · Зажим</text>
+  <text x="484" y="150" class="txt-s">действие: Zazhim := 1</text>
+
+  <path d="M400 164 V190" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M380 190 H420" stroke="#1E2422" stroke-width="3" fill="none"/>
+  <text x="432" y="194" class="txt-s" fill="#A87400">концевик зажима</text>
+
+  <rect x="330" y="202" width="140" height="40" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="228" text-anchor="middle" class="txt-m">Шаг 20 · Сверление</text>
+  <text x="484" y="228" class="txt-s">действие: Sverlo_vniz := 1</text>
+
+  <path d="M400 242 V268" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M380 268 H420" stroke="#1E2422" stroke-width="3" fill="none"/>
+  <text x="432" y="272" class="txt-s" fill="#A87400">нижний концевик</text>
+
+  <rect x="330" y="280" width="140" height="40" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="400" y="306" text-anchor="middle" class="txt-m">Шаг 30 · Возврат</text>
+
+  <path d="M400 320 V346" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M380 346 H420" stroke="#1E2422" stroke-width="3" fill="none"/>
+  <text x="432" y="350" class="txt-s" fill="#A87400">верхний концевик</text>
+
+  <!-- возврат в начало -->
+  <path d="M400 346 V366 H250 V66 H330" stroke="#1C6B4C" stroke-width="2" stroke-dasharray="5 4" fill="none"/>
+  <text x="180" y="216" text-anchor="middle" class="txt-s" fill="#1C6B4C">возврат</text>
+  <text x="180" y="232" text-anchor="middle" class="txt-s" fill="#1C6B4C">в исходное</text>
+</svg>
+<figcaption>Прямоугольник — шаг, горизонтальная черта — переход. Пока условие перехода не выполнено, машина стоит на текущем шаге и выполняет его действие.</figcaption>
+</figure>
+
+<h3>Три составные части</h3>
+<ul>
+  <li><strong>Шаг (Step)</strong> — состояние машины. Начальный шаг рисуют двойной рамкой.</li>
+  <li><strong>Действие (Action)</strong> — что делается, пока машина на этом шаге. Пишется на LAD или ST.</li>
+  <li><strong>Переход (Transition)</strong> — условие, при котором происходит переход к следующему шагу.</li>
+</ul>
+
+<p>SFC умеет и ветвления: параллельные ветки, которые выполняются одновременно и сходятся в одной точке, и альтернативные, где выбирается один из путей по условию.</p>
+
+<h3>Главное достоинство и главный подвох</h3>
+
+<p><strong>Достоинство:</strong> при отладке видно, на каком шаге стоит машина. Активный шаг подсвечивается. Когда линия зависла, наладчик за секунду понимает: застряли на шаге 20, ждём нижний концевик, — и идёт проверять именно этот датчик. В LAD-программе на такой поиск уйдут минуты.</p>
+
+<p><strong>Подвох:</strong> SFC описывает нормальный ход событий. Аварии, ручной режим, возврат в исходное положение из середины цикла, реакция на аварийный стоп — всё это в схему шагов не укладывается и пишется отдельно. Начинающие часто рисуют красивую последовательность и обнаруживают, что машину невозможно вернуть в исходное состояние после сбоя.</p>
+
+<div class="note">
+<span class="lbl">Альтернатива без SFC</span>
+Ровно ту же логику можно написать через <code>CASE</code> на ST — пример был во второй главе. Многие опытные программисты так и делают: меньше зависимости от среды, легче переносить между платформами, а подсветку активного шага заменяет обычный просмотр переменной с номером шага. Если выбираешь между «разбираться с SFC» и «освоить CASE», второе универсальнее.
+</div>
+
+<!-- ============ ГЛАВА 5 ============ -->
+<h2 id="g5" data-n="Глава 05">Типы данных и переменные</h2>
+
+<p>В первом томе разбирались биты, байты и слова как единицы памяти. Теперь посмотрим на них со стороны программы: какие бывают типы переменных и когда какой брать.</p>
+
+<div class="tw">
+<table>
+<tr><th>Тип</th><th>Размер</th><th>Диапазон</th><th>Для чего</th></tr>
+<tr><td>BOOL</td><td>1 бит</td><td>0 / 1</td><td>Кнопки, датчики, флаги, выходы</td></tr>
+<tr><td>BYTE</td><td>8 бит</td><td>0…255</td><td>Группа битов, обмен по сети</td></tr>
+<tr><td>INT</td><td>16 бит</td><td>−32768…32767</td><td>Счётчики, сырые значения с АЦП</td></tr>
+<tr><td>DINT</td><td>32 бита</td><td>±2,1 млрд</td><td>Большие счётчики, наработка</td></tr>
+<tr><td>REAL</td><td>32 бита</td><td>дробные числа</td><td>Давление, температура, расчёты</td></tr>
+<tr><td>TIME</td><td>32 бита</td><td>T#1s, T#5m30s</td><td>Уставки таймеров</td></tr>
+<tr><td>STRING</td><td>переменный</td><td>текст</td><td>Сообщения, номера партий, штрихкоды</td></tr>
+</table>
+</div>
+
+<h3>Целые и дробные: где ловушка</h3>
+
+<p>Самая частая ошибка новичка — деление целых чисел. Если обе переменные типа INT, результат тоже будет INT, и дробная часть просто отбросится.</p>
+
+<div class="rung">INT:   7 / 2  =  3        дробная часть потеряна безвозвратно
+REAL:  7.0 / 2.0 = 3.5   правильно
+
+Поэтому при масштабировании аналогового сигнала:
+   Davlenie := INT_TO_REAL(Syroe) / 27648.0 * 16.0;
+
+Сначала преобразуем в REAL, потом делим. Не наоборот.</div>
+
+<p>И обратная сторона: REAL хранит числа приблизительно. Сравнивать дробные числа на точное равенство нельзя — <code>IF Temperatura = 25.0</code> может не сработать никогда. Сравнивай через больше-меньше или задавай допуск.</p>
+
+<h3>Массивы</h3>
+
+<p>Массив — это пронумерованный набор переменных одного типа. Удобно, когда объектов много и они однотипные: двадцать датчиков, десять уставок, история измерений.</p>
+
+<div class="rung">Temperatura : ARRAY[1..10] OF REAL;
+
+Temperatura[1] := 23.5;
+Temperatura[7] := 24.1;
+
+FOR i := 1 TO 10 DO
+    IF Temperatura[i] &gt; Maks THEN Maks := Temperatura[i]; END_IF;
+END_FOR;</div>
+
+<div class="note danger">
+<span class="lbl">Выход за границы массива</span>
+Обращение к <code>Temperatura[15]</code> в массиве на 10 элементов — тяжёлая ошибка. В лучшем случае среда поймает её при компиляции, в худшем контроллер уйдёт в STOP уже на объекте. Если индекс вычисляется в программе, а не задан константой, обязательно проверяй его границы перед обращением.
+</div>
+
+<h3>Структуры</h3>
+
+<p>Структура объединяет разнотипные переменные, описывающие один объект. Это то, что превращает программу из свалки тегов в понятную модель оборудования.</p>
+
+<div class="rung">TYPE tKonveyer :
+STRUCT
+    Rabotaet     : BOOL;
+    Avariya      : BOOL;
+    Skorost      : REAL;
+    Schet_yashikov : DINT;
+    Narabotka    : TIME;
+END_STRUCT
+END_TYPE
+
+Konveyer_1 : tKonveyer;
+Konveyer_2 : tKonveyer;
+
+IF Konveyer_1.Avariya THEN  Konveyer_1.Rabotaet := FALSE;  END_IF;</div>
+
+<p>Описал один раз — используешь для всех однотипных механизмов. Добавил новое поле в структуру — оно появилось у всех конвейеров сразу.</p>
+
+<h3>Правила именования</h3>
+<ul>
+  <li>Имя должно говорить, что это: <code>KM1_Konveyer</code>, а не <code>M12</code></li>
+  <li>Держи связь с электрической схемой: если в схеме KM1, то и тег KM1</li>
+  <li>Для булевых переменных имя-утверждение: <code>Davlenie_OK</code> читается как условие</li>
+  <li>Единицы измерения в имени: <code>Davlenie_bar</code>, <code>Vremya_ms</code> — избавляет от половины ошибок в расчётах</li>
+  <li>Латиница без диакритики: кириллица и польские знаки в именах поддерживаются не везде и создают проблемы при переносе проекта</li>
+</ul>
+
+<div class="task">
+<span class="lbl">Задание 5</span>
+Сырое значение с датчика давления равно 13824, модуль Siemens (диапазон 0…27648), датчик на 0–16 бар. Напиши расчёт на ST правильно, с преобразованием типов. Какой тип будет у результата и почему нельзя обойтись INT?
+</div>
+
+<!-- ============ ГЛАВА 6 ============ -->
+<h2 id="g6" data-n="Глава 06">Блоки Siemens: OB, FB, FC, DB</h2>
+
+<p>Программа контроллера не пишется одной сплошной портянкой. Она делится на блоки, и у каждого типа блока своя роль. Это место, где новички путаются чаще всего, поэтому разберём медленно.</p>
+
+<figure>
+<svg viewBox="0 0 800 330" role="img" aria-label="Структура блоков программы Siemens">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">СТРУКТУРА ПРОГРАММЫ</text>
+
+  <!-- OB1 -->
+  <rect x="250" y="46" width="300" height="52" rx="4" fill="#E3E8DF" stroke="#A87400" stroke-width="2.5"/>
+  <text x="400" y="70" text-anchor="middle" class="txt-m" fill="#A87400">OB1 · Main</text>
+  <text x="400" y="88" text-anchor="middle" class="txt-s">точка входа, вызывается ОС каждый цикл</text>
+
+  <!-- стрелки вниз -->
+  <path d="M340 98 V128" stroke="#1E2422" stroke-width="2" fill="none"/>
+  <path d="M460 98 V128" stroke="#1E2422" stroke-width="2" fill="none"/>
+
+  <!-- FC -->
+  <rect x="180" y="132" width="200" height="76" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="280" y="156" text-anchor="middle" class="txt-m">FC · функция</text>
+  <text x="280" y="176" text-anchor="middle" class="txt-s">без собственной памяти</text>
+  <text x="280" y="194" text-anchor="middle" class="txt-s">посчитал — забыл</text>
+
+  <!-- FB -->
+  <rect x="420" y="132" width="200" height="76" rx="4" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="520" y="156" text-anchor="middle" class="txt-m" fill="#1C6B4C">FB · функциональный блок</text>
+  <text x="520" y="176" text-anchor="middle" class="txt-s">с собственной памятью</text>
+  <text x="520" y="194" text-anchor="middle" class="txt-s">помнит между циклами</text>
+
+  <path d="M520 208 V240" stroke="#1C6B4C" stroke-width="2" fill="none"/>
+  <rect x="420" y="244" width="200" height="52" rx="4" fill="#DDEBE0" stroke="#1C6B4C" stroke-width="1.5"/>
+  <text x="520" y="266" text-anchor="middle" class="txt-m" fill="#1C6B4C">Instance DB</text>
+  <text x="520" y="284" text-anchor="middle" class="txt-s">память конкретного экземпляра</text>
+
+  <!-- global DB -->
+  <rect x="640" y="132" width="140" height="76" rx="4" fill="#E3E8DF" stroke="#1F5391" stroke-width="1.5"/>
+  <text x="710" y="156" text-anchor="middle" class="txt-m" fill="#1F5391">Global DB</text>
+  <text x="710" y="176" text-anchor="middle" class="txt-s">общие данные:</text>
+  <text x="710" y="192" text-anchor="middle" class="txt-s">уставки, рецепты</text>
+
+  <text x="400" y="322" text-anchor="middle" class="txt-s">Блоки вызывают друг друга. Всё начинается с OB1, который операционная система запускает каждый цикл.</text>
+</svg>
+<figcaption>OB — точка входа, FC и FB — рабочие блоки, DB — хранилища данных. Ключевое различие FC и FB в наличии памяти.</figcaption>
+</figure>
+
+<h3>OB — организационные блоки</h3>
+
+<p>Это точки, через которые операционная система контроллера запускает твою программу. Ты их не вызываешь — их вызывает CPU при наступлении события.</p>
+
+<div class="tw">
+<table>
+<tr><th>Блок</th><th>Когда вызывается</th></tr>
+<tr><td>OB1 (Main)</td><td>Каждый цикл сканирования. Основная программа</td></tr>
+<tr><td>OB100 (Startup)</td><td>Один раз при переходе в RUN. Начальная инициализация</td></tr>
+<tr><td>OB35 / Cyclic interrupt</td><td>Строго по времени, например каждые 100 мс. Для регулирования</td></tr>
+<tr><td>OB40 / Hardware interrupt</td><td>По аппаратному событию, минуя цикл. Для быстрой реакции</td></tr>
+<tr><td>OB82, OB121 и другие</td><td>При ошибках: отказ модуля, ошибка программирования</td></tr>
+</table>
+</div>
+
+<p>Блоки ошибок стоит завести даже в простом проекте. Если их нет, ошибка вроде выхода за границы массива останавливает CPU. Если OB ошибки существует — контроллер вызовет его и продолжит работу, а ты сможешь записать причину и выдать сообщение оператору.</p>
+
+<h3>FC — функция без памяти</h3>
+
+<p>Получила данные на вход, посчитала, выдала результат и всё забыла. Ничего между вызовами не хранит. Годится для расчётов: пересчёт единиц, масштабирование, проверка условия.</p>
+
+<h3>FB — функциональный блок с памятью</h3>
+
+<p>Главное отличие: у FB есть <strong>статические переменные</strong>, которые сохраняются между циклами. Именно поэтому таймеры и счётчики сделаны как FB — им нужно помнить, сколько уже насчитано.</p>
+
+<p>Память FB хранится в отдельном блоке данных — <strong>экземплярном DB</strong> (Instance DB). И вот тут ключевая идея, ради которой всё это устроено.</p>
+
+<h3>Экземпляры: одна программа, много механизмов</h3>
+
+<p>Представь линию с пятью одинаковыми конвейерами. Логика у всех одна: пуск, стоп, самоподхват, счёт, авария. Писать пять раз одно и то же — это пять мест для ошибки и пять мест для правки.</p>
+
+<p>Вместо этого пишут <strong>один</strong> FB с логикой конвейера и вызывают его пять раз, каждый со своим экземплярным DB. Логика общая, а память у каждого своя: свой счётчик, свой таймер, своё состояние.</p>
+
+<div class="rung">FB "Konveyer" — написан один раз
+
+Вызовы в OB1:
+    "Konveyer_1_DB" ( Pusk := I0.0, Stop := I0.1, Motor =&gt; Q0.0 );
+    "Konveyer_2_DB" ( Pusk := I0.2, Stop := I0.3, Motor =&gt; Q0.1 );
+    "Konveyer_3_DB" ( Pusk := I0.4, Stop := I0.5, Motor =&gt; Q0.2 );
+
+Нашёл ошибку — правишь в одном месте, исправляется у всех трёх.</div>
+
+<p>Это самый важный приём во всём томе. Он превращает программу из набора копий в модель оборудования и экономит недели на больших проектах.</p>
+
+<h3>DB — блоки данных</h3>
+<ul>
+  <li><strong>Global DB</strong> — общее хранилище. Уставки, рецепты, данные для панели оператора, счётчики выработки. Доступен из любого блока.</li>
+  <li><strong>Instance DB</strong> — память конкретного экземпляра FB. Создаётся автоматически при вызове.</li>
+</ul>
+
+<h3>Виды переменных внутри блока</h3>
+<div class="tw">
+<table>
+<tr><th>Раздел</th><th>Что это</th><th>Живёт</th></tr>
+<tr><td>Input</td><td>Входные параметры блока</td><td>Передаются при вызове</td></tr>
+<tr><td>Output</td><td>Результаты работы блока</td><td>Возвращаются наружу</td></tr>
+<tr><td>InOut</td><td>Передаются внутрь и меняются</td><td>Для структур и массивов</td></tr>
+<tr><td>Static</td><td>Собственная память блока</td><td>Между циклами, только у FB</td></tr>
+<tr><td>Temp</td><td>Временные, для расчётов внутри</td><td>Только текущий вызов, потом мусор</td></tr>
+</table>
+</div>
+
+<div class="note danger">
+<span class="lbl">Ошибка с Temp</span>
+Временные переменные не инициализируются нулём. В начале каждого вызова там лежит мусор от предыдущего использования этой области памяти. Всегда присваивай значение временной переменной перед тем, как её прочитать. Ошибка коварна тем, что на стенде программа работает, а на объекте начинает вести себя случайным образом.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 6</span>
+На линии четыре одинаковых пневмоцилиндра: выдвинуть, дождаться концевика, задержка, задвинуть, дождаться концевика. У каждого свой таймер контроля времени. Как это организовать — четырьмя FC, четырьмя FB, или одним FB с четырьмя экземплярами? Обоснуй, что произойдёт при каждом варианте, если понадобится изменить время задержки.
+</div>
+<!-- ============ ГЛАВА 7 ============ -->
+<h2 id="g7" data-n="Глава 07">То же самое в CODESYS</h2>
+
+<p>CODESYS — среда, не привязанная к одному производителю. Её ставят внутрь своих контроллеров WAGO, ifm, Turck, Beckhoff (там она называется TwinCAT), ОВЕН и десятки других. Логика та же, что у Siemens, но названия другие — и это единственное, что сбивает при переходе.</p>
+
+<div class="tw">
+<table>
+<tr><th>Siemens</th><th>CODESYS / IEC</th><th>Что это по сути</th></tr>
+<tr><td>OB1 (Main)</td><td>PRG + Task</td><td>Программа, привязанная к задаче</td></tr>
+<tr><td>FC</td><td>FUN (Function)</td><td>Расчёт без памяти</td></tr>
+<tr><td>FB</td><td>FB (Function Block)</td><td>Блок с памятью</td></tr>
+<tr><td>Instance DB</td><td>экземпляр переменной типа FB</td><td>Память экземпляра</td></tr>
+<tr><td>Global DB</td><td>GVL (Global Variable List)</td><td>Общие переменные</td></tr>
+<tr><td>Таблица тегов</td><td>привязка в конфигурации устройства</td><td>Связь имён с адресами</td></tr>
+<tr><td>Любой блок</td><td>POU (Program Organization Unit)</td><td>Общее название программной единицы</td></tr>
+</table>
+</div>
+
+<h3>Задачи вместо организационных блоков</h3>
+
+<p>У Siemens программа вызывается из OB1, и период определяется циклом сканирования. В CODESYS есть <strong>менеджер задач</strong>, где ты сам создаёшь задачи и назначаешь им период и приоритет.</p>
+
+<div class="rung">MainTask   — циклическая,  20 мс, приоритет 10  -&gt; PLC_PRG
+FastTask   — циклическая,   5 мс, приоритет  1  -&gt; Regulirovanie
+SlowTask   — циклическая, 500 мс, приоритет 20  -&gt; Statistika, Obmen</div>
+
+<p>Это гибче: быстрое регулирование получает свою задачу с высоким приоритетом, а сбор статистики и обмен по сети — медленную. У Siemens то же делается через OB циклических прерываний.</p>
+
+<h3>Объявление переменных</h3>
+
+<div class="rung">PROGRAM PLC_PRG
+VAR
+    Konveyer_1 : FB_Konveyer;      экземпляр блока
+    Taymer     : TON;
+    Schet      : INT;
+    Davlenie   : REAL;
+END_VAR
+VAR RETAIN
+    Narabotka  : DINT;             переживёт отключение питания
+END_VAR
+
+Konveyer_1( Pusk := xPusk, Stop := xStop, Motor =&gt; qMotor );</div>
+
+<p>Экземпляр FB объявляется как обычная переменная типа этого блока. Отдельные DB создавать не надо — среда делает это сама. По смыслу это ровно то же, что экземплярный DB у Siemens, просто оформлено проще.</p>
+
+<h3>ОВЕН и российские контроллеры</h3>
+
+<p>ОВЕН строит свои ПЛК на CODESYS: серия ПЛК1xx работала на CODESYS 2.3, более новые ПЛК2xx — на CODESYS 3.5. Среда скачивается с сайта производителя вместе с пакетом поддержки устройств. Языки и структура проекта стандартные, поэтому знание CODESYS переносится на ОВЕН и обратно без переучивания.</p>
+
+<div class="note ok">
+<span class="lbl">Что это значит практически</span>
+Выучив <strong>Siemens</strong>, ты закрываешь автопром и почти всю европейскую промышленность — то, с чем работаешь на объектах сейчас. Выучив <strong>CODESYS</strong>, получаешь доступ к десяткам производителей и бесплатную среду для домашней практики. Переход между ними занимает пару вечеров, потому что стандарт один. Оптимальный путь: рабочий инструмент — Siemens, домашний полигон — CODESYS.
+</div>
+
+<!-- ============ ГЛАВА 8 ============ -->
+<h2 id="g8" data-n="Глава 08">Как начать без железа</h2>
+
+<p>Самая практичная глава тома. Учиться можно вообще без контроллера: программа проверяется в симуляторе, а вместо реального оборудования подключается трёхмерная модель линии.</p>
+
+<figure>
+<svg viewBox="0 0 800 260" role="img" aria-label="Учебный стенд из трёх программ на одном компьютере">
+  <text x="400" y="24" text-anchor="middle" class="txt-hi">УЧЕБНЫЙ СТЕНД НА ОДНОМ НОУТБУКЕ</text>
+
+  <rect x="40" y="56" width="200" height="92" rx="4" fill="#E3E8DF" stroke="#1E2422" stroke-width="1.5"/>
+  <text x="140" y="82" text-anchor="middle" class="txt-m">СРЕДА РАЗРАБОТКИ</text>
+  <text x="140" y="104" text-anchor="middle" class="txt-s">TIA Portal</text>
+  <text x="140" y="122" text-anchor="middle" class="txt-s">или CODESYS</text>
+  <text x="140" y="140" text-anchor="middle" class="txt-s">здесь пишешь программу</text>
+
+  <path d="M240 102 H298" stroke="#A87400" stroke-width="2.5" fill="none"/>
+  <text x="269" y="94" text-anchor="middle" class="txt-s" fill="#A87400">загрузка</text>
+
+  <rect x="300" y="56" width="200" height="92" rx="4" fill="#E3E8DF" stroke="#1C6B4C" stroke-width="2"/>
+  <text x="400" y="82" text-anchor="middle" class="txt-m" fill="#1C6B4C">ВИРТУАЛЬНЫЙ ПЛК</text>
+  <text x="400" y="104" text-anchor="middle" class="txt-s">S7-PLCSIM</text>
+  <text x="400" y="122" text-anchor="middle" class="txt-s">или CODESYS Simulation</text>
+  <text x="400" y="140" text-anchor="middle" class="txt-s">выполняет программу</text>
+
+  <path d="M500 102 H558" stroke="#A87400" stroke-width="2.5" fill="none"/>
+  <text x="529" y="94" text-anchor="middle" class="txt-s" fill="#A87400">I/O</text>
+
+  <rect x="560" y="56" width="200" height="92" rx="4" fill="#E3E8DF" stroke="#1F5391" stroke-width="1.5"/>
+  <text x="660" y="82" text-anchor="middle" class="txt-m" fill="#1F5391">МОДЕЛЬ ОБЪЕКТА</text>
+  <text x="660" y="104" text-anchor="middle" class="txt-s">Factory I/O</text>
+  <text x="660" y="122" text-anchor="middle" class="txt-s">конвейеры, датчики,</text>
+  <text x="660" y="140" text-anchor="middle" class="txt-s">сортировщики в 3D</text>
+
+  <path d="M660 148 V182 H140 V148" stroke="#1C6B4C" stroke-width="2" stroke-dasharray="5 4" fill="none"/>
+  <text x="400" y="200" text-anchor="middle" class="txt-s" fill="#1C6B4C">обратная связь: видно, как программа двигает механизмы</text>
+
+  <text x="400" y="234" text-anchor="middle" class="txt-s">Ошибка в логике здесь ничего не ломает и никого не травмирует.</text>
+  <text x="400" y="252" text-anchor="middle" class="txt-s">Это единственный безопасный способ учиться на реальных задачах.</text>
+</svg>
+<figcaption>Три программы на одном компьютере заменяют шкаф с контроллером и стенд с механизмами.</figcaption>
+</figure>
+
+<h3>Вариант 1: TIA Portal + PLCSIM</h3>
+
+<p>То, что реально стоит на объектах, где ты работаешь, — поэтому вариант основной.</p>
+
+<ul>
+  <li><strong>Что скачивать:</strong> STEP 7 Basic или Professional. Basic поддерживает только S7-1200, Professional — ещё и S7-1500. Установщик разбит на несколько образов, суммарно десятки гигабайт.</li>
+  <li><strong>Лицензия:</strong> пробная на 21 день. Отсчёт начинается <strong>с момента установки</strong>, а не с первого запуска. Лицензия привязывается к оборудованию компьютера, поэтому переустановка системы нового срока не даёт.</li>
+  <li><strong>Версии:</strong> примерно одна крупная версия в год. V20 вышла в декабре 2024, V21 — в декабре 2025. На каждую версию даётся <strong>отдельная</strong> пробная лицензия: истёк срок у одной — можно поставить следующую и получить новые 21 день.</li>
+  <li><strong>Совместимость проектов односторонняя.</strong> Новая версия откроет старый проект, старая новый — нет. Если у заказчика V18, а ты пишешь в V21, вернуть проект обратно не получится. Версию заказчика выясняй до начала работы.</li>
+  <li><strong>PLCSIM</strong> — симулятор контроллера, скачивается отдельным файлом и входит в пробную лицензию. Обычного PLCSIM достаточно для учёбы на S7-1200/1500. PLCSIM Advanced — отдельный платный продукт для связи с внешними симуляторами и виртуальной пусконаладки.</li>
+  <li><strong>Подводный камень:</strong> загрузка PLCSIM подпадает под немецкие правила экспортного контроля. На аккаунте Siemens может потребоваться дополнительная проверка, занимающая от нескольких часов до пары суток. Запрашивай доступ заранее, а не в тот вечер, когда сел учиться.</li>
+</ul>
+
+<p><strong>Требования к компьютеру:</strong> Windows 10 или 11, 64 бита, минимум 8 ГБ памяти (комфортно от 16), процессор уровня Core i5, около 50 ГБ на диске и обязательно SSD — на жёстком диске среда работает мучительно медленно.</p>
+
+<div class="note">
+<span class="lbl">Совет по установке</span>
+Ставь TIA Portal в <strong>виртуальную машину</strong>. Причин три: среда тянет за собой множество служб, постоянно висящих в системе; при истечении пробного периода машину можно откатить к снимку; на объектах часто нужна конкретная старая версия, и держать несколько версий в отдельных виртуалках спокойнее, чем ставить их рядом в один Windows.
+</div>
+
+<h3>Вариант 2: CODESYS со встроенной симуляцией</h3>
+
+<ul>
+  <li><strong>Среда разработки CODESYS бесплатна.</strong> Скачивается из CODESYS Store после регистрации. Актуальная ветка — V3.5, обновляется сервис-паками.</li>
+  <li><strong>Симуляция встроена:</strong> включаешь режим Simulation, и программа выполняется прямо в среде без дополнительного софта.</li>
+  <li>В комплекте демонстрационный программный контроллер Control Win SL. Без лицензии он работает <strong>по два часа</strong>, потом останавливается — перезапустил и продолжил. Для учёбы не мешает.</li>
+  <li>Платить нужно только за рабочие среды исполнения на реальном железе и профессиональные расширения.</li>
+</ul>
+
+<h3>Вариант 3: модель объекта Factory I/O</h3>
+
+<p>Программа с трёхмерными сценами: конвейеры, сортировщики, лифты, наполнители, паллетайзеры. Собираешь сцену, подключаешь к PLCSIM или CODESYS и видишь, как программа управляет механизмами — включая последствия своих ошибок.</p>
+
+<p>Продукт платный, но даёт <strong>пробный период 30 дней</strong> с полным набором сцен. Этого хватает на основные учебные задачи. С Siemens связывается напрямую через PLCSIM, с CODESYS — через OPC.</p>
+
+<div class="tw">
+<table>
+<tr><th>Программа</th><th>Цена</th><th>Ограничение</th><th>Зачем</th></tr>
+<tr><td>TIA Portal</td><td>пробная</td><td>21 день на каждую версию</td><td>Основной инструмент на объектах</td></tr>
+<tr><td>S7-PLCSIM</td><td>в составе пробной</td><td>нужна проверка аккаунта</td><td>Виртуальный контроллер Siemens</td></tr>
+<tr><td>CODESYS</td><td>бесплатно</td><td>демо-рантайм 2 часа</td><td>Практика без ограничения по сроку</td></tr>
+<tr><td>Factory I/O</td><td>платная</td><td>30 дней пробный период</td><td>Трёхмерная модель линии</td></tr>
+<tr><td>LOGO! Soft Comfort</td><td>демо бесплатно</td><td>загрузка в железо только в платной</td><td>Знакомство с логикой на простом реле</td></tr>
+<tr><td>OpenPLC</td><td>бесплатно, открытый код</td><td>небольшое сообщество</td><td>Эксперименты, запуск на Raspberry Pi</td></tr>
+</table>
+</div>
+
+<div class="note ok">
+<span class="lbl">С чего начать конкретно</span>
+Поставь CODESYS — он бесплатный и без срока. Пройди на нём второй том: собери пуск-стоп, добавь таймер, потом счётчик. Когда логика перестанет вызывать вопросы, ставь пробный TIA Portal в виртуалку и повтори те же задачи на Siemens — тогда 21 день не сгорит на изучении базовых вещей. Factory I/O включай последним, когда уже будет что запускать на модели: тридцать дней стоит потратить с толком.
+</div>
+
+<div class="task">
+<span class="lbl">Задание 8</span>
+На объекте стоит S7-1500 с проектом в TIA Portal V18. Дома у тебя установлена V21. Сможешь открыть проект заказчика? Сможешь вернуть его после правок? Что нужно сделать до выезда?
+</div>
+
+<!-- ============ ГЛАВА 9 ============ -->
+<h2 id="g9" data-n="Глава 09">Первый проект: конвейер как блок</h2>
+
+<p>Соберём конвейер из второго тома как переиспользуемый функциональный блок. Это тот самый переход от набора цепей к модели оборудования.</p>
+
+<h3>Интерфейс блока</h3>
+
+<div class="rung">FUNCTION_BLOCK FB_Konveyer
+
+VAR_INPUT
+    Pusk           : BOOL;   кнопка пуска
+    Stop           : BOOL;   кнопка стопа, в поле NC -&gt; здесь 1 = норма
+    Datchik        : BOOL;   датчик наличия ящика
+    Sbros          : BOOL;   кнопка «Готово»
+    Davlenie_bar   : REAL;   давление в пневмосети
+    Norma_yashikov : INT;    сколько ящиков в коробку
+END_VAR
+
+VAR_OUTPUT
+    Motor          : BOOL;   контактор конвейера
+    Lampa_rabota   : BOOL;
+    Lampa_korobka  : BOOL;
+    Sirena         : BOOL;
+    Avariya        : BOOL;
+    Schet          : INT;    текущий счёт, для панели оператора
+END_VAR
+
+VAR
+    Zapros         : BOOL;   внутреннее состояние
+    Davlenie_OK    : BOOL;
+    Korobka_polna  : BOOL;
+    Taymer_predupr : TON;    экземпляры блоков —
+    Front_datchik  : R_TRIG; у каждого своя память
+    Front_sbros    : R_TRIG;
+END_VAR</div>
+
+<h3>Тело блока</h3>
+
+<div class="rung">// 1. Условия
+Davlenie_OK := Davlenie_bar &gt; 5.0;
+
+// 2. Запрос на пуск с самоподхватом
+Zapros := (Pusk OR Zapros)
+          AND Stop
+          AND Davlenie_OK
+          AND NOT Korobka_polna
+          AND NOT Avariya;
+
+// 3. Предупредительный сигнал 5 секунд
+Taymer_predupr( IN := Zapros, PT := T#5s );
+Sirena := Zapros AND NOT Taymer_predupr.Q;
+
+// 4. Движение
+Motor        := Zapros AND Taymer_predupr.Q;
+Lampa_rabota := Motor;</div>
+
+<div class="rung">// 5. Счёт ящиков по фронту
+Front_datchik( CLK := Datchik );
+IF Front_datchik.Q AND Motor THEN
+    Schet := Schet + 1;
+END_IF;
+
+IF Schet &gt;= Norma_yashikov THEN
+    Korobka_polna := TRUE;
+END_IF;
+
+// 6. Сброс счёта по кнопке
+Front_sbros( CLK := Sbros );
+IF Front_sbros.Q THEN
+    Schet := 0;
+    Korobka_polna := FALSE;
+END_IF;
+
+Lampa_korobka := Korobka_polna;
+
+// 7. Авария по давлению: взводится, снимается только при возврате нормы
+IF Motor AND NOT Davlenie_OK THEN
+    Avariya := TRUE;
+END_IF;
+IF Front_sbros.Q AND Davlenie_OK THEN
+    Avariya := FALSE;
+END_IF;</div>
+
+<h3>Разбор ключевых мест</h3>
+
+<p><strong>Самоподхват в ST.</strong> Строка <code>Zapros := (Pusk OR Zapros) AND ...</code> — это тот же блок-контакт, только записанный текстом. Переменная участвует в вычислении собственного значения: если она уже была единицей, условие остаётся истинным без нажатой кнопки. Приоритет стопа сохранён: <code>AND Stop</code> стоит снаружи скобок и рвёт условие безусловно.</p>
+
+<p><strong>Порядок строк.</strong> Он важен так же, как порядок сетей в LAD. Таймер вызывается <em>после</em> вычисления <code>Zapros</code>, чтобы получить актуальное значение в этом же цикле. Если поменять местами, реакция задержится на цикл.</p>
+
+<p><strong>Условие <code>AND Motor</code> при счёте.</strong> Без него счётчик будет считать ящики, которые кто-то проносит мимо датчика рукой при остановленном конвейере. Мелочь, но именно из таких мелочей состоит разница между программой «работает на стенде» и «работает на объекте».</p>
+
+<h3>Вызов блока для трёх линий</h3>
+
+<div class="rung">Konveyer_1( Pusk := "S1_Pusk_L1",  Stop := "S2_Stop_L1",
+            Datchik := "B1_L1",   Sbros := "S3_Gotovo_L1",
+            Davlenie_bar := Davlenie_seti,  Norma_yashikov := 20,
+            Motor =&gt; "KM1_L1",    Lampa_rabota =&gt; "HL1_L1" );
+
+Konveyer_2( Pusk := "S1_Pusk_L2", ... Norma_yashikov := 12, ... );
+Konveyer_3( Pusk := "S1_Pusk_L3", ... Norma_yashikov := 24, ... );</div>
+
+<p>Три линии, разные нормы упаковки, разные входы и выходы — <strong>одна логика</strong>. Нашёл ошибку или добавил функцию — правишь в одном месте, работает у всех трёх. Именно за это в проектах и держатся структуры и функциональные блоки.</p>
+
+<div class="task">
+<span class="lbl">Итоговое задание тома</span>
+<ol>
+  <li>Добавь в блок вход <code>Rezhim_avto</code>: в ручном режиме конвейер должен ехать только пока держат кнопку, без самоподхвата и без предупредительной сирены. Как изменится строка вычисления <code>Zapros</code>?</li>
+  <li>Добавь контроль простоя: если конвейер работает, но за 60 секунд не пришло ни одного ящика — выдать предупреждение. Какой таймер и какое условие на входе IN?</li>
+  <li>Почему <code>Schet</code> объявлен в разделе VAR, а не VAR_TEMP? Что произойдёт, если перенести его в VAR_TEMP?</li>
+  <li>Нужно, чтобы счёт выработки за смену сохранялся при отключении питания. Что для этого поменять в объявлении?</li>
+</ol>
+</div>
+
+<!-- ============ ГЛАВА 10 ============ -->
+<h2 id="g10" data-n="Глава 10">Шпаргалки и словарь терминов</h2>
+
+<h3>Structured Text: основное</h3>
+
+<div class="rung">:=              присвоить            Motor := TRUE;
+=  &lt;&gt;  &gt;  &lt;  &gt;=  &lt;=   сравнение     IF Davlenie &gt; 5.0 THEN
+AND  OR  NOT  XOR       логика        A AND NOT B
++  -  *  /  MOD         арифметика    Ostatok := N MOD 10;
+
+IF ... THEN ... ELSIF ... ELSE ... END_IF;
+CASE Peremennaya OF  1: ...  2: ...  ELSE ...  END_CASE;
+FOR i := 1 TO 10 DO ... END_FOR;
+WHILE условие DO ... END_WHILE;      осторожно: watchdog
+
+(* многострочный комментарий *)
+// однострочный комментарий
+
+Блок:   Ekzemplyar( Vhod := Znachenie );  затем  Ekzemplyar.Vyhod
+Время:  T#500ms   T#5s   T#2m30s
+Типы:   BOOL INT DINT REAL TIME STRING BYTE WORD
+Массив: Massiv : ARRAY[1..10] OF REAL;   обращение Massiv[3]</div>
+
+<h3>Преобразования типов</h3>
+<div class="rung">INT_TO_REAL( x )     целое  -&gt; дробное     обязательно перед делением
+REAL_TO_INT( x )     дробное -&gt; целое      округляет
+INT_TO_DINT( x )     расширение разрядности
+TIME_TO_DINT( x )    время в миллисекундах
+DINT_TO_TIME( x )    обратно, для расчётных уставок</div>
+
+<h3>Словарь: Siemens, CODESYS, ГОСТ</h3>
+<div class="tw">
+<table>
+<tr><th>Siemens</th><th>CODESYS / IEC</th><th>По-русски</th></tr>
+<tr><td>LAD</td><td>LD</td><td>Язык релейных схем, РКС</td></tr>
+<tr><td>FBD</td><td>FBD</td><td>Функциональные блоковые диаграммы</td></tr>
+<tr><td>SCL</td><td>ST</td><td>Структурированный текст</td></tr>
+<tr><td>GRAPH</td><td>SFC</td><td>Последовательные функциональные схемы</td></tr>
+<tr><td>STL</td><td>IL</td><td>Список инструкций (устарел)</td></tr>
+<tr><td>Tag</td><td>Variable</td><td>Переменная, тег</td></tr>
+<tr><td>Instance DB</td><td>экземпляр FB</td><td>Память экземпляра блока</td></tr>
+<tr><td>Merker (M)</td><td>внутренняя переменная</td><td>Промежуточное реле</td></tr>
+<tr><td>Download</td><td>Login + Download</td><td>Загрузка программы в контроллер</td></tr>
+<tr><td>Monitoring</td><td>Online view</td><td>Просмотр значений вживую</td></tr>
+</table>
+</div>
+
+<h3>Порядок освоения: что делать после этого тома</h3>
+<ol>
+  <li>Поставить CODESYS, собрать в симуляторе все примеры второго тома</li>
+  <li>Переписать один из них на ST — почувствовать разницу</li>
+  <li>Сделать первый FB с двумя экземплярами: два одинаковых механизма от одной логики</li>
+  <li>Поставить пробный TIA Portal в виртуалку, повторить то же на S7-1200</li>
+  <li>Подключить Factory I/O и прогнать сцену с конвейером и сортировкой</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Мысль напоследок</span>
+Языки и блоки — это инструменты организации, а не сама автоматизация. Программа из одного блока на две тысячи строк и программа из тридцати аккуратных FB делают одно и то же, но первую невозможно поддерживать, а вторую наладчик разберёт за вечер. Разница между новичком и профессионалом видна не в знании синтаксиса, а в том, как поделена программа.
+</div>
+
+<div class="end">
+<p><strong>Конец третьего тома.</strong> Дальше — Том 4 «Объект»: панели оператора и HMI, промышленные сети PROFINET, PROFIBUS и Modbus, управление частотниками, аналоговое регулирование и ПИД, диагностика и сообщения об авариях.</p>
+<p>Перед переходом установи CODESYS и собери конвейер из девятой главы в симуляторе. Дальше без практики двигаться уже нет смысла.</p>
+</div>
+
+</div>
+
+</body></html>
