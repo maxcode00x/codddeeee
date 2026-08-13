@@ -1,0 +1,1685 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПЛК-тренажёр</title>
+<style>
+  :root {
+    --bg: #12161c;
+    --panel: #1a2029;
+    --panel2: #212936;
+    --panel3: #262f3d;
+    --border: #2c3644;
+    --text: #e4e8ee;
+    --muted: #8a94a6;
+    --accent: #4fd1c5;
+    --accent2: #f0b429;
+    --danger: #ef5757;
+    --ok: #4caf50;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; white-space: nowrap; }
+  .tabs { display: flex; gap: 6px; }
+  .tab {
+    font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--panel2); color: var(--muted);
+    cursor: pointer;
+  }
+  .tab.active { background: var(--accent); color: #052; border-color: var(--accent); }
+  .spacer { flex: 1; }
+  .sound-toggle { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .panel h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 0 0 2px 0; font-weight: 600;
+  }
+
+  canvas {
+    width: 100%; height: auto; aspect-ratio: 800 / 340;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button {
+    font-family: inherit; font-size: 12.5px; font-weight: 600;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 12px; cursor: pointer;
+    background: var(--panel2); color: var(--text);
+    transition: background .15s;
+  }
+  button:hover { background: #2a3342; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: #052; border-color: var(--accent); }
+  button.primary:hover { background: #5fe0d3; }
+  button.stop, button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  button.stop:hover, button.danger:hover { background: #ff6b6b; }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.armed { background: var(--accent2); color: #3a2600; border-color: var(--accent2); }
+
+  select {
+    font-family: inherit; font-size: 13px; background: var(--panel2);
+    color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 8px;
+  }
+
+  /* code editor with syntax highlight overlay */
+  .editor-wrap {
+    position: relative; flex: 1; min-height: 240px;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    background: #0d1117;
+  }
+  .editor-wrap pre, .editor-wrap textarea {
+    margin: 0; padding: 12px; position: absolute; inset: 0;
+    font-family: var(--mono); font-size: 13px; line-height: 1.55;
+    white-space: pre-wrap; word-wrap: break-word; overflow: auto;
+    tab-size: 2; border: none;
+  }
+  .editor-wrap pre {
+    color: #d8e0ea; pointer-events: none; z-index: 1;
+  }
+  .editor-wrap textarea {
+    background: transparent; color: transparent; caret-color: #fff;
+    resize: none; z-index: 2; outline: none;
+  }
+  .tok-kw { color: #ff7b9c; font-weight: 700; }
+  .tok-fn { color: #4fd1c5; font-weight: 700; }
+  .tok-num { color: #f0b429; }
+  .tok-cm { color: #5c6b7f; font-style: italic; }
+  .tok-op { color: #e4e8ee; }
+  .tok-tag-in { color: #7ec8ff; }
+  .tok-tag-out { color: #9dff9d; }
+
+  #errorBox {
+    display: none;
+    background: #3a1414; border: 1px solid var(--danger);
+    color: #ffb3b3; padding: 8px 12px; border-radius: 6px;
+    font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap;
+  }
+  #errorBox.show { display: block; }
+
+  #checkResult { display: none; padding: 9px 12px; border-radius: 6px; font-size: 12.5px; white-space: pre-wrap; line-height:1.5; }
+  #checkResult.show { display: block; }
+  #checkResult.ok { background: #123a1e; border: 1px solid var(--ok); color: #b6f0c2; }
+  #checkResult.fail { background: #3a1414; border: 1px solid var(--danger); color: #ffb3b3; }
+
+  .tagtable { font-family: var(--mono); font-size: 12px; border-collapse: collapse; width: 100%; }
+  .tagtable th { text-align: left; color: var(--muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+  .tagtable td { padding: 4px 6px; border-bottom: 1px solid #1d2530; }
+  .tagtable .dir-in { color: #7ec8ff; }
+  .tagtable .dir-out { color: #9dff9d; }
+  .tagtable .val-on { color: var(--ok); font-weight: 700; }
+  .tagtable .val-off { color: var(--muted); }
+  .tagtable-wrap { max-height: 170px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .tagtable-empty { color: var(--muted); font-size: 12.5px; padding: 10px; text-align: center; }
+
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge.running { border-color: var(--ok); color: var(--ok); }
+
+  .cheatsheet {
+    font-size: 12px; color: var(--muted); line-height: 1.55;
+    background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 11px;
+  }
+  .cheatsheet code {
+    background: #0d1117; color: var(--accent);
+    padding: 1px 5px; border-radius: 4px; font-family: var(--mono);
+  }
+  .row-flex { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* palette (sandbox) */
+  .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap: 6px; }
+  .palette button {
+    flex-direction: column; display: flex; align-items: center; gap: 3px;
+    padding: 8px 4px; font-size: 11px; font-weight: 500; text-align: center;
+  }
+  .palette button .emoji { font-size: 18px; }
+
+  /* task list (tutorial) */
+  .tasklist { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .tasklist button { min-width: 34px; }
+  .tasklist button.done { border-color: var(--ok); }
+  .tasklist button.done::after { content: ' ✓'; color: var(--ok); }
+  .level-header { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 6px 0 4px; }
+  .level-header:first-child { margin-top: 0; }
+  .task-desc { font-size: 13px; line-height: 1.55; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .task-desc b { color: var(--accent); }
+
+  .toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1c2532; border: 1px solid var(--accent); color: var(--text);
+    padding: 9px 16px; border-radius: 8px; font-size: 13px; z-index: 50;
+    opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  #exportArea { display: none; }
+  #exportArea.show { display: flex; flex-direction: column; gap: 6px; }
+  #exportText { width: 100%; height: 90px; font-family: var(--mono); font-size: 11px; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; resize: vertical; }
+
+  .hint-select { font-size:11.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ПЛК-тренажёр</h1>
+  <div class="tabs">
+    <button class="tab active" id="tabTutorial" type="button">🎓 Обучение</button>
+    <button class="tab" id="tabSandbox" type="button">🛠 Своя линия</button>
+  </div>
+  <div class="spacer"></div>
+  <label class="sound-toggle"><input type="checkbox" id="soundToggle"> 🔊 Звук сирены</label>
+</header>
+
+<div class="layout">
+
+  <div class="panel">
+
+    <!-- ==== TUTORIAL SIDE PANEL ==== -->
+    <div id="tutorialPanel">
+      <h2>Задания</h2>
+      <div id="taskList"></div>
+      <div class="task-desc" id="taskDesc"></div>
+    </div>
+
+    <!-- ==== SANDBOX SIDE PANEL ==== -->
+    <div id="sandboxPanel" style="display:none">
+      <div class="row-flex">
+        <h2>Приборы (нажми, потом кликни по сцене)</h2>
+        <button id="btnCancelPlace" class="ghost" style="display:none">✕ Готово</button>
+      </div>
+      <div class="palette" id="palette"></div>
+      <div class="controls">
+        <button id="btnEditMode">✏️ Режим правки: выкл</button>
+        <button id="btnRotateSelected" disabled>⟳ Повернуть</button>
+        <button id="btnDeleteSelected" disabled>🗑 Удалить выбранный</button>
+        <button id="btnClearAll" class="ghost">Очистить сцену</button>
+      </div>
+      <div class="controls">
+        <button id="btnSave">💾 Сохранить</button>
+        <button id="btnLoad">📂 Загрузить</button>
+        <button id="btnExportToggle" class="ghost">⇅ Экспорт / импорт</button>
+      </div>
+      <div id="exportArea">
+        <textarea id="exportText" spellcheck="false"></textarea>
+        <div class="controls">
+          <button id="btnExportFill">Экспортировать сюда</button>
+          <button id="btnImportApply" class="primary">Импортировать отсюда</button>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:4px">Схема линии</h2>
+    <canvas id="scene" width="800" height="340"></canvas>
+
+    <div class="controls">
+      <button id="btnRun" class="primary">▶ Компилировать и запустить</button>
+      <button id="btnResetState">↺ Сброс состояния</button>
+      <div class="spacer"></div>
+      <label class="hint-select">Такт сканирования:
+        <select id="scanRate">
+          <option value="500">500 мс</option>
+          <option value="200" selected>200 мс</option>
+          <option value="100">100 мс</option>
+          <option value="50">50 мс</option>
+        </select>
+      </label>
+      <span class="badge" id="scanBadge">остановлено</span>
+    </div>
+
+    <h2>Теги (I/O)</h2>
+    <div class="tagtable-wrap">
+      <table class="tagtable" id="tagTable"><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row-flex">
+      <h2>Программа (упрощённый Structured Text)</h2>
+    </div>
+    <div class="editor-wrap">
+      <pre id="highlight"><code></code></pre>
+      <textarea id="code" spellcheck="false"></textarea>
+    </div>
+    <div id="errorBox"></div>
+    <div id="checkResult"></div>
+    <div class="controls" id="tutorialCheckControls">
+      <button class="primary" id="btnCheck">✅ Проверить решение</button>
+    </div>
+    <div class="cheatsheet">
+      <b>Синтаксис:</b><br>
+      Присваивание: <code>Тег := выражение;</code> &nbsp;
+      Логика: <code>AND</code> <code>OR</code> <code>NOT</code> <code>( )</code> <code>TRUE</code>/<code>FALSE</code><br>
+      Условие: <code>IF выражение THEN ... ELSE ... END_IF;</code><br>
+      Таймер (вкл. с задержкой): <code>Var := TON(Имя, условие, миллисекунды);</code><br>
+      Счётчик (нарастающие фронты): <code>Var := CTU(Имя, условие, число);</code><br>
+      Комментарии: <code>// строка</code> или <code>(* блок *)</code><br>
+      Имена тегов смотри в таблице «Теги (I/O)» слева — они появляются автоматически, когда на линии есть прибор.
+      Любое незнакомое имя — просто внутренняя переменная-память (для флагов, латчей и т.п.).
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ======================================================================
+   СЛОЙ 1: ИНТЕРПРЕТАТОР УПРОЩЁННОГО STRUCTURED TEXT
+   (не знает ничего о приборах/канвасе — чистая логика ПЛК)
+   ====================================================================== */
+
+function stripComments(src) {
+  return src.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/\/\/.*$/gm, '');
+}
+
+const KEYWORDS = new Set(['IF','THEN','ELSE','END_IF','AND','OR','NOT','TRUE','FALSE']);
+
+function lex(src) {
+  src = stripComments(src);
+  const tokens = [];
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === ':' && src[i+1] === '=') { tokens.push({t:'ASSIGN'}); i+=2; continue; }
+    if (c === ';') { tokens.push({t:'SEMI'}); i++; continue; }
+    if (c === '(') { tokens.push({t:'LPAREN'}); i++; continue; }
+    if (c === ')') { tokens.push({t:'RPAREN'}); i++; continue; }
+    if (c === ',') { tokens.push({t:'COMMA'}); i++; continue; }
+    if (/[0-9]/.test(c)) {
+      let j = i;
+      while (j < n && /[0-9]/.test(src[j])) j++;
+      tokens.push({t:'NUMBER', v: parseInt(src.slice(i,j),10)});
+      i = j; continue;
+    }
+    if (/[A-Za-z_]/.test(c)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_]/.test(src[j])) j++;
+      const word = src.slice(i,j);
+      const upper = word.toUpperCase();
+      if (KEYWORDS.has(upper)) tokens.push({t: upper});
+      else tokens.push({t:'IDENT', v: word});
+      i = j; continue;
+    }
+    throw new Error(`Неизвестный символ '${c}' в позиции ${i}`);
+  }
+  tokens.push({t:'EOF'});
+  return tokens;
+}
+
+class Parser {
+  constructor(tokens) { this.tokens = tokens; this.pos = 0; }
+  peek() { return this.tokens[this.pos]; }
+  next() { return this.tokens[this.pos++]; }
+  expect(type) {
+    const tok = this.next();
+    if (tok.t !== type) throw new Error(`Ожидался ${type}, но найден ${tok.t}`);
+    return tok;
+  }
+  parseProgram() {
+    const stmts = [];
+    while (this.peek().t !== 'EOF') stmts.push(this.parseStatement());
+    return stmts;
+  }
+  parseStatements(stopTokens) {
+    const stmts = [];
+    while (!stopTokens.includes(this.peek().t)) {
+      if (this.peek().t === 'EOF') throw new Error('Незакрытый блок IF — не хватает END_IF');
+      stmts.push(this.parseStatement());
+    }
+    return stmts;
+  }
+  parseStatement() {
+    if (this.peek().t === 'IF') return this.parseIf();
+    if (this.peek().t === 'IDENT') return this.parseAssign();
+    throw new Error(`Неожиданный токен: ${this.peek().t}`);
+  }
+  parseAssign() {
+    const name = this.expect('IDENT').v;
+    this.expect('ASSIGN');
+    const expr = this.parseExpr();
+    this.expect('SEMI');
+    return {type:'assign', name, expr};
+  }
+  parseIf() {
+    this.expect('IF');
+    const cond = this.parseExpr();
+    this.expect('THEN');
+    const thenStmts = this.parseStatements(['ELSE','END_IF']);
+    let elseStmts = [];
+    if (this.peek().t === 'ELSE') {
+      this.next();
+      elseStmts = this.parseStatements(['END_IF']);
+    }
+    this.expect('END_IF');
+    if (this.peek().t === 'SEMI') this.next();
+    return {type:'if', cond, then: thenStmts, else: elseStmts};
+  }
+  parseExpr() { return this.parseOr(); }
+  parseOr() {
+    let left = this.parseAnd();
+    while (this.peek().t === 'OR') { this.next(); left = {type:'bin', op:'OR', left, right: this.parseAnd()}; }
+    return left;
+  }
+  parseAnd() {
+    let left = this.parseNot();
+    while (this.peek().t === 'AND') { this.next(); left = {type:'bin', op:'AND', left, right: this.parseNot()}; }
+    return left;
+  }
+  parseNot() {
+    if (this.peek().t === 'NOT') { this.next(); return {type:'not', expr: this.parseNot()}; }
+    return this.parsePrimary();
+  }
+  parsePrimary() {
+    const tok = this.peek();
+    if (tok.t === 'TRUE') { this.next(); return {type:'lit', value:true}; }
+    if (tok.t === 'FALSE') { this.next(); return {type:'lit', value:false}; }
+    if (tok.t === 'NUMBER') { this.next(); return {type:'num', value: tok.v}; }
+    if (tok.t === 'LPAREN') { this.next(); const e = this.parseExpr(); this.expect('RPAREN'); return e; }
+    if (tok.t === 'IDENT') {
+      this.next();
+      if (this.peek().t === 'LPAREN') {
+        this.next();
+        const isNamedBlock = NAMED_BLOCKS.has(tok.v.toUpperCase());
+        const args = [];
+        if (this.peek().t !== 'RPAREN') {
+          args.push(isNamedBlock ? this.parseBlockNameArg() : this.parseExpr());
+          while (this.peek().t === 'COMMA') { this.next(); args.push(this.parseExpr()); }
+        }
+        this.expect('RPAREN');
+        return {type:'call', name: tok.v, args};
+      }
+      return {type:'var', name: tok.v};
+    }
+    throw new Error(`Неожиданный токен в выражении: ${tok.t}`);
+  }
+  parseBlockNameArg() {
+    const name = this.expect('IDENT').v;
+    return {type:'name', value: name};
+  }
+}
+
+// TON и CTU — единственные функции языка, их первый аргумент — голое имя
+// (идентификатор таймера/счётчика), а не переменная/выражение
+const NAMED_BLOCKS = new Set(['TON', 'CTU']);
+
+function evalExpr(node, scope, timers, counters, now) {
+  switch (node.type) {
+    case 'lit': return node.value;
+    case 'num': return node.value;
+    case 'var': return !!scope[node.name];
+    case 'not': return !evalExpr(node.expr, scope, timers, counters, now);
+    case 'bin': {
+      const l = evalExpr(node.left, scope, timers, counters, now);
+      if (node.op === 'AND') return l && evalExpr(node.right, scope, timers, counters, now);
+      if (node.op === 'OR') return l || evalExpr(node.right, scope, timers, counters, now);
+      throw new Error('Неизвестный оператор ' + node.op);
+    }
+    case 'call': {
+      const fn = node.name.toUpperCase();
+      if (fn === 'TON') {
+        if (node.args.length !== 3) throw new Error('TON требует 3 аргумента: TON(Имя, условие, миллисекунды)');
+        const timerId = node.args[0].value;
+        const input = evalExpr(node.args[1], scope, timers, counters, now);
+        const preset = evalExpr(node.args[2], scope, timers, counters, now);
+        let timer = timers[timerId];
+        if (!timer) timer = timers[timerId] = {running:false, start:0};
+        if (input) {
+          if (!timer.running) { timer.running = true; timer.start = now; }
+          return (now - timer.start) >= preset;
+        }
+        timer.running = false;
+        return false;
+      }
+      if (fn === 'CTU') {
+        if (node.args.length !== 3) throw new Error('CTU требует 3 аргумента: CTU(Имя, условие, число)');
+        const counterId = node.args[0].value;
+        const input = evalExpr(node.args[1], scope, timers, counters, now);
+        const preset = evalExpr(node.args[2], scope, timers, counters, now);
+        let counter = counters[counterId];
+        if (!counter) counter = counters[counterId] = {count:0, prev:false};
+        if (input && !counter.prev) counter.count++;
+        counter.prev = input;
+        return counter.count >= preset;
+      }
+      throw new Error('Неизвестная функция ' + node.name);
+    }
+    default: throw new Error('Неизвестный узел ' + node.type);
+  }
+}
+
+function execStmts(stmts, scope, timers, counters, now) {
+  for (const s of stmts) {
+    if (s.type === 'assign') scope[s.name] = evalExpr(s.expr, scope, timers, counters, now);
+    else if (s.type === 'if') execStmts(evalExpr(s.cond, scope, timers, counters, now) ? s.then : s.else, scope, timers, counters, now);
+  }
+}
+
+function compile(src) {
+  return new Parser(lex(src)).parseProgram();
+}
+
+/* ======================================================================
+   СЛОЙ 2: БИБЛИОТЕКА ПРИБОРОВ (типы устройств, их теги, физика, отрисовка)
+   Каждый прибор — экземпляр {id, type, x, y, state}. Теги — это просто
+   ключи в общем объекте IO, который читает/пишет интерпретатор.
+   ====================================================================== */
+
+const IO = Object.create(null);   // все теги всех приборов + служебные переменные пользователя
+let timers = {};
+let counters = {};
+let ast = null;
+let scanTimerHandle = null;
+
+const CANVAS_W = 800, CANVAS_H = 340;
+const GRID = 10;
+function snap(v) { return Math.round(v / GRID) * GRID; }
+
+function makeBlink(period) { return Math.floor(performance.now() / period) % 2 === 0; }
+
+// поворот вращаемых приборов (сейчас только конвейер): 0=вправо,1=вниз,2=влево,3=вверх
+function rotatePoint(local, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return { x: local.x * c - local.y * s, y: local.x * s + local.y * c };
+}
+
+const DEVICE_DEFS = {
+  conveyor: {
+    label: 'Конвейер', emoji: '📦', idPrefix: 'Conveyor', w: 170, h: 40, rotatable: true,
+    hint: 'Выдели в режиме правки и нажми «⟳ Повернуть», чтобы менять направление движения (вправо/вниз/влево/вверх).',
+    tags(id) { return [{key:`${id}_Motor`, dir:'OUT'}, {key:`${id}_Sensor`, dir:'IN'}]; },
+    makeState() { return { boxX: 0, dir: 0 }; },
+    footprint(dev) {
+      const { w, h } = DEVICE_DEFS.conveyor;
+      return (dev.state.dir % 2 === 1) ? { w: h, h: w } : { w, h };
+    },
+    rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
+    physics(dev, dt, boxPositions) {
+      const w = DEVICE_DEFS.conveyor.w, h = DEVICE_DEFS.conveyor.h, boxW = 24;
+      const motorKey = `${dev.id}_Motor`, sensorKey = `${dev.id}_Sensor`;
+      const zoneStart = w - 70, zoneEnd = w - 14;
+      let bx = dev.state.boxX;
+      const inZone = bx + boxW >= zoneStart && bx <= zoneEnd + 18;
+      IO[sensorKey] = inZone;
+
+      const angle = dev.state.dir * Math.PI / 2;
+      const fp = DEVICE_DEFS.conveyor.footprint(dev);
+      const center = { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
+      const exitOffset = rotatePoint({ x: w / 2, y: 0 }, angle);
+      const exitPoint = { x: center.x + exitOffset.x, y: center.y + exitOffset.y };
+
+      const blocked = isBlockedNear(exitPoint, dev);
+      const atGate = bx + boxW >= zoneEnd;
+      const canMove = !!IO[motorKey] && !(atGate && blocked);
+      if (canMove) bx += 42 * dt;
+      if (bx > w + boxW * 2) bx = 0;
+      if (blocked) bx = Math.min(bx, zoneEnd);
+      dev.state.boxX = bx;
+
+      const boxOffset = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+      boxPositions.push({ x: center.x + boxOffset.x, y: center.y + boxOffset.y });
+    },
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.conveyor;
+      const angle = dev.state.dir * Math.PI / 2;
+      const fp = DEVICE_DEFS.conveyor.footprint(dev);
+      const center = { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
+
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      ctx.rotate(angle);
+      // дальше рисуем в локальных координатах конвейера (0,0) = центр, ось X = направление движения
+      ctx.fillStyle = '#161c24';
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2;
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      const motorOn = !!IO[`${dev.id}_Motor`];
+      ctx.strokeStyle = '#2c3644'; ctx.lineWidth = 1;
+      const tick = motorOn ? (performance.now() / 40) % 20 : 0;
+      for (let tx = -w / 2 - tick; tx < w / 2 + 20; tx += 20) {
+        ctx.beginPath(); ctx.moveTo(tx, -h / 2); ctx.lineTo(tx, h / 2); ctx.stroke();
+      }
+      const zoneStart = w - 70, zoneEnd = w - 14;
+      const sensorOn = !!IO[`${dev.id}_Sensor`];
+      ctx.fillStyle = sensorOn ? 'rgba(79,209,197,0.28)' : 'rgba(79,209,197,0.10)';
+      ctx.fillRect(-w / 2 + zoneStart, -h / 2 - 4, zoneEnd - zoneStart + 14, h + 8);
+      const boxW = 24;
+      ctx.fillStyle = '#f0b429';
+      ctx.fillRect(-w / 2 + dev.state.boxX, -12, boxW, 24);
+      ctx.strokeStyle = '#8a5a00';
+      ctx.strokeRect(-w / 2 + dev.state.boxX, -12, boxW, 24);
+      ctx.fillStyle = motorOn ? '#4caf50' : '#8a94a6';
+      ctx.beginPath(); ctx.arc(-w / 2 - 8, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // подпись — всегда прямая, вне трансформации поворота
+      label(ctx, dev.id, dev.x, dev.y - 6);
+    }
+  },
+
+  gate: {
+    label: 'Шлагбаум', emoji: '🚧', idPrefix: 'Gate', w: 90, h: 90,
+    tags(id) { return [{key:`${id}_Open`, dir:'OUT'}]; },
+    makeState() { return { angle: 90 }; },
+    physics(dev, dt) {
+      const target = IO[`${dev.id}_Open`] ? 0 : 90;
+      dev.state.angle += (target - dev.state.angle) * Math.min(1, dt * 6);
+    },
+    draw(ctx, dev) {
+      const pivotX = dev.x + 16, pivotY = dev.y + 70;
+      const armLen = 60;
+      const rad = dev.state.angle * Math.PI / 180;
+      const armX = pivotX + Math.sin(rad) * armLen;
+      const armY = pivotY - Math.cos(rad) * armLen;
+      const open = !!IO[`${dev.id}_Open`];
+      ctx.fillStyle = '#3a4556';
+      ctx.fillRect(pivotX - 5, pivotY, 10, 20);
+      ctx.beginPath(); ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = open ? '#4caf50' : '#ef5757';
+      ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(pivotX, pivotY); ctx.lineTo(armX, armY); ctx.stroke();
+      ctx.setLineDash([8, 8]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(pivotX, pivotY); ctx.lineTo(armX, armY); ctx.stroke();
+      ctx.setLineDash([]);
+      label(ctx, dev.id, dev.x, dev.y + 88);
+    }
+  },
+
+  door: {
+    label: 'Дверь (шторка)', emoji: '🚪', idPrefix: 'Door', w: 34, h: 90,
+    tags(id) { return [{key:`${id}_Open`, dir:'OUT'}]; },
+    makeState() { return { openFrac: 0 }; },
+    physics(dev, dt) {
+      const target = IO[`${dev.id}_Open`] ? 1 : 0;
+      dev.state.openFrac += (target - dev.state.openFrac) * Math.min(1, dt * 5);
+    },
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.door;
+      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 3;
+      ctx.strokeRect(dev.x, dev.y, w, h);
+      const panelH = h * (1 - dev.state.openFrac);
+      const open = !!IO[`${dev.id}_Open`];
+      ctx.fillStyle = open ? '#2e6b48' : '#6b2e2e';
+      ctx.fillRect(dev.x + 3, dev.y + (h - panelH), w - 6, panelH - 3);
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
+
+  sensor: {
+    label: 'Датчик', emoji: '👁', idPrefix: 'Sensor', w: 24, h: 24, radius: 42,
+    tags(id) { return [{key:id, dir:'IN'}]; },
+    makeState() { return {}; },
+    physics(dev, dt, boxPositions) {
+      const cx = dev.x + 12, cy = dev.y + 12;
+      let hit = false;
+      for (const p of boxPositions) {
+        if (Math.hypot(p.x - cx, p.y - cy) < DEVICE_DEFS.sensor.radius) { hit = true; break; }
+      }
+      IO[dev.id] = hit;
+    },
+    draw(ctx, dev) {
+      const cx = dev.x + 12, cy = dev.y + 12;
+      const on = !!IO[dev.id];
+      ctx.fillStyle = on ? 'rgba(79,209,197,0.25)' : 'rgba(79,209,197,0.08)';
+      ctx.beginPath(); ctx.arc(cx, cy, DEVICE_DEFS.sensor.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#4fd1c5'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, DEVICE_DEFS.sensor.radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = on ? '#4fd1c5' : '#3a4556';
+      ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#12161c'; ctx.lineWidth = 2; ctx.stroke();
+      label(ctx, dev.id, dev.x - 6, dev.y - 8);
+    }
+  },
+
+  button: {
+    label: 'Кнопка', emoji: '🔘', idPrefix: 'Button', w: 40, h: 40, interactive: 'momentary',
+    tags(id) { return [{key:id, dir:'IN'}]; },
+    makeState() { return { pressed: false }; },
+    physics() {},
+    draw(ctx, dev) {
+      const cx = dev.x + 20, cy = dev.y + 20;
+      const on = !!IO[dev.id];
+      ctx.fillStyle = on ? '#4caf50' : '#1c4d34';
+      ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#2e6b48'; ctx.lineWidth = 3; ctx.stroke();
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
+
+  switch: {
+    label: 'Тумблер', emoji: '🎚', idPrefix: 'Switch', w: 40, h: 40, interactive: 'toggle',
+    tags(id) { return [{key:id, dir:'IN'}]; },
+    makeState() { return {}; },
+    physics() {},
+    draw(ctx, dev) {
+      const on = !!IO[dev.id];
+      ctx.fillStyle = '#161c24'; ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2;
+      roundRect(ctx, dev.x, dev.y + 10, 40, 20, 10); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = on ? '#4caf50' : '#8a94a6';
+      ctx.beginPath(); ctx.arc(on ? dev.x + 30 : dev.x + 10, dev.y + 20, 8, 0, Math.PI * 2); ctx.fill();
+      label(ctx, dev.id, dev.x - 6, dev.y - 4);
+    }
+  },
+
+  lamp: {
+    label: 'Лампа', emoji: '💡', idPrefix: 'Lamp', w: 28, h: 28,
+    tags(id) { return [{key:id, dir:'OUT'}]; },
+    makeState() { return {}; },
+    physics() {},
+    draw(ctx, dev) {
+      const cx = dev.x + 14, cy = dev.y + 14;
+      const on = !!IO[dev.id];
+      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+      ctx.fillStyle = on ? '#ffcc33' : '#3a4556';
+      ctx.fill();
+      ctx.strokeStyle = '#12161c'; ctx.lineWidth = 2; ctx.stroke();
+      label(ctx, dev.id, dev.x - 6, dev.y - 4);
+    }
+  },
+
+  motor: {
+    label: 'Мотор/насос', emoji: '🌀', idPrefix: 'Motor', w: 36, h: 36,
+    tags(id) { return [{key:id, dir:'OUT'}]; },
+    makeState() { return { spin: 0 }; },
+    physics(dev, dt) { if (IO[dev.id]) dev.state.spin += dt * 6; },
+    draw(ctx, dev) {
+      const cx = dev.x + 18, cy = dev.y + 18;
+      const on = !!IO[dev.id];
+      ctx.fillStyle = on ? '#1c4d34' : '#212936';
+      ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = on ? '#4caf50' : '#39465a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = on ? '#9dff9d' : '#5a6576'; ctx.lineWidth = 2;
+      for (let a = 0; a < 3; a++) {
+        const ang = dev.state.spin + a * (Math.PI * 2 / 3);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * 12, cy + Math.sin(ang) * 12);
+        ctx.stroke();
+      }
+      label(ctx, dev.id, dev.x - 6, dev.y - 4);
+    }
+  },
+
+  siren: {
+    label: 'Сирена', emoji: '🚨', idPrefix: 'Siren', w: 32, h: 32,
+    tags(id) { return [{key:id, dir:'OUT'}]; },
+    makeState() { return {}; },
+    physics() {},
+    draw(ctx, dev) {
+      const cx = dev.x + 16, cy = dev.y + 16;
+      const on = !!IO[dev.id];
+      const blink = on && makeBlink(280);
+      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.fillStyle = on ? (blink ? '#ff4d4d' : '#7a1a1a') : '#3a4556';
+      ctx.fill();
+      ctx.strokeStyle = '#12161c'; ctx.lineWidth = 2; ctx.stroke();
+      label(ctx, dev.id, dev.x - 6, dev.y - 4);
+    }
+  },
+
+  trafficlight: {
+    label: 'Светофор', emoji: '🚦', idPrefix: 'Light', w: 30, h: 78,
+    tags(id) { return [{key:`${id}_Red`, dir:'OUT'}, {key:`${id}_Yellow`, dir:'OUT'}, {key:`${id}_Green`, dir:'OUT'}]; },
+    makeState() { return {}; },
+    physics() {},
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.trafficlight;
+      ctx.fillStyle = '#161c24';
+      roundRect(ctx, dev.x, dev.y, w, h, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2; ctx.stroke();
+      const colors = [
+        { key: `${dev.id}_Red`, on: '#ff4d4d', off: '#4a2222' },
+        { key: `${dev.id}_Yellow`, on: '#ffcc33', off: '#4a3f1a' },
+        { key: `${dev.id}_Green`, on: '#4caf50', off: '#204b26' },
+      ];
+      colors.forEach((c, i) => {
+        const cy = dev.y + 16 + i * 23;
+        ctx.beginPath(); ctx.arc(dev.x + w / 2, cy, 9, 0, Math.PI * 2);
+        ctx.fillStyle = IO[c.key] ? c.on : c.off;
+        ctx.fill();
+        ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 1.5; ctx.stroke();
+      });
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
+
+  estop: {
+    label: 'Авар. кнопка (НЗ)', emoji: '⛔', idPrefix: 'EStop', w: 40, h: 40, interactive: 'estop',
+    hint: 'Нормально-замкнутый контакт: тег = TRUE значит «всё в порядке». Клик — нажать/сработать аварию (тег станет FALSE), клик ещё раз — отпустить/сбросить.',
+    tags(id) { return [{key:id, dir:'IN', default:true}]; },
+    makeState() { return { latched: false }; },
+    physics() {},
+    draw(ctx, dev) {
+      const cx = dev.x + 20, cy = dev.y + 20;
+      const safe = !!IO[dev.id];
+      ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fill();
+      ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, safe ? 14 : 11, 0, Math.PI * 2);
+      ctx.fillStyle = safe ? '#ef5757' : '#7a1a1a';
+      ctx.fill();
+      if (!safe) {
+        ctx.strokeStyle = '#ffcc33'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.stroke();
+      }
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
+};
+
+function label(ctx, text, x, y) {
+  ctx.fillStyle = '#8a94a6';
+  ctx.font = '10.5px monospace';
+  ctx.fillText(text, x, y < 10 ? 10 : y);
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function isBlockedNear(point, excludeDev) {
+  for (const d of world.devices) {
+    if (d === excludeDev) continue;
+    if (d.type !== 'gate' && d.type !== 'door') continue;
+    const def = DEVICE_DEFS[d.type];
+    const center = { x: d.x + def.w / 2, y: d.y + def.h / 2 };
+    if (Math.hypot(center.x - point.x, center.y - point.y) < 55) {
+      if (!IO[`${d.id}_Open`]) return true;
+    }
+  }
+  return false;
+}
+
+function deviceRect(dev) {
+  const def = DEVICE_DEFS[dev.type];
+  const size = def.footprint ? def.footprint(dev) : { w: def.w, h: def.h };
+  return { x: dev.x, y: dev.y, w: size.w, h: size.h };
+}
+function pointInDevice(dev, px, py) {
+  const r = deviceRect(dev);
+  return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+}
+
+function tagDefault(t) { return t.default !== undefined ? t.default : false; }
+
+function registerTags(dev) {
+  DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { if (!(t.key in IO)) IO[t.key] = tagDefault(t); });
+}
+function unregisterTags(dev) {
+  DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { delete IO[t.key]; });
+}
+
+/* ======================================================================
+   СЛОЙ 3: МИР / РЕЖИМЫ (обучение vs своя линия)
+   ====================================================================== */
+
+const world = {
+  mode: 'tutorial',
+  devices: [],
+  editMode: false,
+  selectedId: null,
+  placingType: null,
+  dragging: null,
+  typeCounters: {},
+};
+
+function nextId(type) {
+  world.typeCounters[type] = (world.typeCounters[type] || 0) + 1;
+  return DEVICE_DEFS[type].idPrefix + world.typeCounters[type];
+}
+
+function clearDevices() {
+  world.devices = [];
+  for (const k in IO) delete IO[k];
+  world.selectedId = null;
+}
+
+function addDevice(type, x, y, forcedId) {
+  const def = DEVICE_DEFS[type];
+  const dev = {
+    id: forcedId || nextId(type),
+    type,
+    x: snap(Math.max(0, Math.min(CANVAS_W - def.w, x))),
+    y: snap(Math.max(0, Math.min(CANVAS_H - def.h, y))),
+    state: def.makeState(),
+  };
+  world.devices.push(dev);
+  registerTags(dev);
+  return dev;
+}
+
+function removeDevice(dev) {
+  unregisterTags(dev);
+  world.devices = world.devices.filter(d => d !== dev);
+  if (world.selectedId === dev.id) world.selectedId = null;
+}
+
+function resetDeviceStates() {
+  for (const dev of world.devices) {
+    dev.state = DEVICE_DEFS[dev.type].makeState();
+    DEVICE_DEFS[dev.type].tags(dev.id).forEach(t => { IO[t.key] = tagDefault(t); });
+  }
+  timers = {};
+  counters = {};
+}
+
+/* ---------------- задания режима "Обучение" ---------------- */
+
+const TASKS = [
+  // ---------- Уровень 1: Основы ----------
+  {
+    level: 1, levelTitle: 'Основы',
+    title: 'Лампа от кнопки',
+    devices: [ ['button','Button1',60,150], ['lamp','Lamp1',300,150] ],
+    desc: 'Сделай так, чтобы лампа <b>Lamp1</b> горела, пока нажата кнопка <b>Button1</b>, и гасла, когда кнопку отпускают.',
+    starter: '// Lamp1 := ...;\n',
+    steps: [
+      {set:{Button1:false}, now:0, expect:{Lamp1:false}, hint:'Пока кнопка не нажата, лампа должна быть выключена.'},
+      {set:{Button1:true}, now:0, expect:{Lamp1:true}, hint:'Lamp1 должна включаться, когда Button1 = TRUE. Попробуй: Lamp1 := Button1;'},
+      {set:{Button1:false}, now:0, expect:{Lamp1:false}, hint:'После отпускания кнопки лампа должна гаснуть.'},
+    ],
+  },
+  {
+    level: 1, levelTitle: 'Основы',
+    title: 'И / ИЛИ',
+    devices: [ ['button','Button1',50,90], ['button','Button2',50,190], ['lamp','Lamp1',280,90], ['siren','Siren1',280,190] ],
+    desc: 'Лампа <b>Lamp1</b> должна гореть, если нажата <b>хотя бы одна</b> из кнопок (ИЛИ). Сирена <b>Siren1</b> должна включаться, только если нажаты <b>обе</b> кнопки сразу (И).',
+    starter: '// Lamp1 := Button1 OR Button2;\n// Siren1 := ...;\n',
+    steps: [
+      {set:{Button1:false, Button2:false}, now:0, expect:{Lamp1:false, Siren1:false}, hint:'Обе кнопки отпущены — всё должно быть выключено.'},
+      {set:{Button1:true, Button2:false}, now:0, expect:{Lamp1:true, Siren1:false}, hint:'Одна кнопка нажата — лампа должна загореться (ИЛИ), сирена — нет.'},
+      {set:{Button1:false, Button2:true}, now:0, expect:{Lamp1:true, Siren1:false}, hint:'То же самое со второй кнопкой.'},
+      {set:{Button1:true, Button2:true}, now:0, expect:{Lamp1:true, Siren1:true}, hint:'Обе кнопки нажаты — теперь должна сработать сирена (И).'},
+      {set:{Button1:false, Button2:false}, now:0, expect:{Lamp1:false, Siren1:false}, hint:'Отпустили обе — всё гаснет.'},
+    ],
+  },
+  {
+    level: 1, levelTitle: 'Основы',
+    title: 'НЕ',
+    devices: [ ['sensor','Sensor1',360,150], ['lamp','Lamp1',120,150] ],
+    desc: 'Лампа <b>Lamp1</b> означает «путь свободен» — она должна гореть, когда деталь <b>НЕ</b> обнаружена датчиком <b>Sensor1</b>.',
+    starter: '// Lamp1 := NOT Sensor1;\n',
+    steps: [
+      {set:{Sensor1:false}, now:0, expect:{Lamp1:true}, hint:'Датчик свободен — путь свободен, лампа должна гореть.'},
+      {set:{Sensor1:true}, now:0, expect:{Lamp1:false}, hint:'Деталь обнаружена — путь занят, лампа должна погаснуть. Используй NOT.'},
+      {set:{Sensor1:false}, now:0, expect:{Lamp1:true}, hint:'Деталь уехала — лампа снова горит.'},
+    ],
+  },
+
+  // ---------- Уровень 2: Память и время ----------
+  {
+    level: 2, levelTitle: 'Память и время',
+    title: 'Пуск/Стоп с самоподхватом',
+    devices: [ ['button','ButtonStart',50,150], ['button','ButtonStop',150,150], ['motor','Motor1',350,150] ],
+    desc: 'Классическая задача ПЛК: кнопки <b>ButtonStart</b>/<b>ButtonStop</b> нажимаются кратковременно (без фиксации). Нужно, чтобы <b>Motor1</b> включался кнопкой Пуск и <b>оставался включённым</b> после её отпускания, пока не нажата Стоп.',
+    starter: '// Motor1 := (ButtonStart OR Motor1) AND NOT ButtonStop;\n',
+    steps: [
+      {set:{ButtonStart:true, ButtonStop:false}, now:0, expect:{Motor1:true}, hint:'При нажатии Пуск мотор должен включиться.'},
+      {set:{ButtonStart:false}, now:0, expect:{Motor1:true}, hint:'После отпускания Пуск мотор должен остаться включённым — это и есть самоподхват (Motor1 OR ButtonStart).'},
+      {set:{ButtonStop:true}, now:0, expect:{Motor1:false}, hint:'Нажатие Стоп должно выключить мотор.'},
+      {set:{ButtonStop:false}, now:0, expect:{Motor1:false}, hint:'После отпускания Стоп мотор должен оставаться выключенным — сам по себе он не включается.'},
+    ],
+  },
+  {
+    level: 2, levelTitle: 'Память и время',
+    title: 'Таймер TON',
+    devices: [ ['sensor','Sensor1',360,150], ['gate','Gate1',560,140] ],
+    desc: 'Ворота <b>Gate1</b> должны открываться через <b>2 секунды</b> после того, как датчик <b>Sensor1</b> сработает — используй функцию <code>TON(Имя, условие, миллисекунды)</code>.',
+    starter: '// Gate1_Open := TON(GateDelay, Sensor1, 2000);\n',
+    steps: [
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:false}, hint:'Сразу после срабатывания датчика ворота ещё не должны открываться — таймер только начал отсчёт.'},
+      {set:{}, now:1000, expect:{Gate1_Open:false}, hint:'Прошла только 1 секунда из нужных 2 — ворота должны быть ещё закрыты.'},
+      {set:{}, now:2100, expect:{Gate1_Open:true}, hint:'Прошло больше 2 секунд с момента срабатывания датчика — ворота должны открыться.'},
+      {set:{Sensor1:false}, now:2200, expect:{Gate1_Open:false}, hint:'Когда датчик отпускает деталь (Sensor1 = FALSE), ворота должны закрываться сразу же.'},
+    ],
+  },
+  {
+    level: 2, levelTitle: 'Память и время',
+    title: 'Мигающая лампа',
+    devices: [ ['button','Button1',80,150], ['lamp','Lamp1',400,150] ],
+    desc: 'Пока нажата кнопка <b>Button1</b>, лампа <b>Lamp1</b> должна мигать короткими вспышками примерно раз в 0.5 секунды — а не гореть постоянно. Хитрость: TON может сам себя перезапускать, если его условие зависит от его же результата: <code>TON(Имя, NOT Переменная, время)</code>.',
+    starter: '// Pulse := TON(FlashTimer, NOT Pulse, 500);\n// Lamp1 := Button1 AND Pulse;\n',
+    steps: [
+      {set:{Button1:true}, now:0, expect:{Lamp1:false}, hint:'Сразу после нажатия таймер только начал отсчёт — лампа ещё не горит.'},
+      {set:{}, now:300, expect:{Lamp1:false}, hint:'Прошло меньше 500мс — лампа ещё не должна вспыхнуть.'},
+      {set:{}, now:600, expect:{Lamp1:true}, hint:'Примерно через 500мс должна произойти короткая вспышка.'},
+      {set:{}, now:610, expect:{Lamp1:false}, hint:'Вспышка должна быть короткой — сама гаснет сразу же.'},
+      {set:{}, now:611, expect:{Lamp1:false}, hint:'Импульс запускается заново (NOT Pulse снова TRUE) — таймер только начал новый отсчёт.'},
+      {set:{}, now:1150, expect:{Lamp1:true}, hint:'Ещё примерно через 500мс должна быть новая вспышка.'},
+      {set:{Button1:false}, now:1160, expect:{Lamp1:false}, hint:'Когда кнопку отпустили, лампа должна погаснуть независимо от таймера.'},
+    ],
+  },
+
+  // ---------- Уровень 3: Счётчики и каскады ----------
+  {
+    level: 3, levelTitle: 'Счётчики и каскады',
+    title: 'Счётчик срабатываний (CTU)',
+    devices: [ ['sensor','Sensor1',360,150], ['gate','Gate1',560,140] ],
+    desc: 'Ворота <b>Gate1</b> должны открываться только после того, как датчик <b>Sensor1</b> сработает <b>3 раза</b> (три отдельные детали проехали). Используй <code>CTU(Имя, условие, число)</code> — он считает нарастающие фронты (переходы FALSE→TRUE) условия и не будет считать повторно, пока условие держится TRUE.',
+    starter: '// Gate1_Open := CTU(PartsCounter, Sensor1, 3);\n',
+    steps: [
+      {set:{Sensor1:false}, now:0, expect:{Gate1_Open:false}, hint:'Пока датчик не сработал ни разу — ворота закрыты.'},
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:false}, hint:'Первое срабатывание — ещё рано, нужно 3.'},
+      {set:{Sensor1:false}, now:0, expect:{Gate1_Open:false}, hint:'Деталь проехала, датчик отпустил.'},
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:false}, hint:'Второе срабатывание — всё ещё рано.'},
+      {set:{Sensor1:false}, now:0, expect:{Gate1_Open:false}, hint:''},
+      {set:{Sensor1:true}, now:0, expect:{Gate1_Open:true}, hint:'Третье срабатывание — теперь ворота должны открыться.'},
+    ],
+  },
+  {
+    level: 3, levelTitle: 'Счётчики и каскады',
+    title: 'Светофор по каскаду таймеров',
+    devices: [ ['button','ButtonStart',60,150], ['trafficlight','Light1',400,120] ],
+    desc: 'После нажатия <b>ButtonStart</b> светофор <b>Light1</b> должен: сразу зажечь зелёный; через <b>2 секунды</b> переключиться на жёлтый; ещё через <b>1 секунду</b> (то есть через 3 секунды после старта) — на красный и остаться на нём. Пока кнопка не нажата — горит красный. Используй два независимых таймера TON, отсчитывающих от одного и того же момента.',
+    starter: '// YellowTimer := TON(T1, ButtonStart, 2000);\n// RedTimer    := TON(T2, ButtonStart, 3000);\n// Light1_Green  := ButtonStart AND NOT YellowTimer;\n// Light1_Yellow := YellowTimer AND NOT RedTimer;\n// Light1_Red    := (NOT ButtonStart) OR RedTimer;\n',
+    steps: [
+      {set:{ButtonStart:false}, now:0, expect:{Light1_Red:true, Light1_Yellow:false, Light1_Green:false}, hint:'Пока не нажат Пуск — горит только красный.'},
+      {set:{ButtonStart:true}, now:0, expect:{Light1_Green:true, Light1_Yellow:false, Light1_Red:false}, hint:'Сразу после Пуск — должен загореться зелёный.'},
+      {set:{}, now:1000, expect:{Light1_Green:true, Light1_Yellow:false, Light1_Red:false}, hint:'Прошла всего 1 секунда — всё ещё зелёный.'},
+      {set:{}, now:2200, expect:{Light1_Green:false, Light1_Yellow:true, Light1_Red:false}, hint:'Прошло больше 2 секунд — должен включиться жёлтый.'},
+      {set:{}, now:3200, expect:{Light1_Green:false, Light1_Yellow:false, Light1_Red:true}, hint:'Прошло больше 3 секунд — должен включиться и остаться красный.'},
+    ],
+  },
+  {
+    level: 3, levelTitle: 'Счётчики и каскады',
+    title: 'Линия с накоплением',
+    devices: [ ['button','ButtonStart',30,260], ['button','ButtonStop',120,260], ['conveyor','Conveyor1',30,150], ['gate','Gate1',630,110], ['lamp','Lamp1',700,260] ],
+    desc: 'Собери всё вместе: <b>ButtonStart/ButtonStop</b> с самоподхватом двигают <b>Conveyor1_Motor</b>. Деталь доезжает до <b>Conveyor1_Sensor</b>. Ворота <b>Gate1</b> открываются через 1 секунду после срабатывания датчика (TON). Пока деталь стоит у датчика, а ворота ещё закрыты — должна гореть лампа <b>Lamp1</b> (сигнал ожидания).',
+    starter: '// 1) Самоподхват: Conveyor1_Motor := (ButtonStart OR Conveyor1_Motor) AND NOT ButtonStop;\n// 2) Таймер:      Gate1_Open := TON(GateDelay, Conveyor1_Sensor, 1000);\n// 3) Лампа:        Lamp1 := Conveyor1_Sensor AND NOT Gate1_Open;\n',
+    steps: [
+      {set:{ButtonStart:true, ButtonStop:false}, now:0, expect:{Conveyor1_Motor:true}, hint:'Пуск должен запускать конвейер.'},
+      {set:{ButtonStart:false}, now:0, expect:{Conveyor1_Motor:true}, hint:'Конвейер должен продолжать работать после отпускания Пуск (самоподхват).'},
+      {set:{Conveyor1_Sensor:true}, now:1000, expect:{Gate1_Open:false, Lamp1:true}, hint:'Деталь только встала у датчика — ворота ещё закрыты, лампа ожидания должна гореть.'},
+      {set:{}, now:2200, expect:{Gate1_Open:true, Lamp1:false}, hint:'Прошло больше 1 секунды — ворота должны открыться, лампа ожидания — погаснуть.'},
+      {set:{Conveyor1_Sensor:false}, now:2300, expect:{Gate1_Open:false, Lamp1:false, Conveyor1_Motor:true}, hint:'Деталь проехала — ворота закрываются, конвейер продолжает работать.'},
+      {set:{ButtonStop:true}, now:2300, expect:{Conveyor1_Motor:false}, hint:'Стоп должен остановить конвейер.'},
+    ],
+  },
+
+  // ---------- Уровень 4: Супер-продвинутый ----------
+  {
+    level: 4, levelTitle: 'Супер-продвинутый',
+    title: 'Линия с защитой (финал)',
+    devices: [
+      ['button','ButtonStart',30,260], ['button','ButtonStop',120,260],
+      ['estop','EStop1',220,260], ['conveyor','Conveyor1',30,150],
+      ['gate','Gate1',630,110], ['trafficlight','Status1',700,60],
+    ],
+    desc: 'Финальная задача — собери линию с защитой:<br>' +
+      '1) <b>Conveyor1_Motor</b> включается ButtonStart с самоподхватом, выключается ButtonStop.<br>' +
+      '2) <b>EStop1</b> — аварийная кнопка с <b>нормально-замкнутым</b> контактом: TRUE значит «всё в порядке», FALSE — авария нажата. Если авария сработала, конвейер должен немедленно и безусловно остановиться.<br>' +
+      '3) Ворота <b>Gate1</b> открываются, когда <b>Conveyor1_Sensor</b> сработал 3 раза подряд (CTU).<br>' +
+      '4) Светофор <b>Status1</b>: зелёный — конвейер работает; жёлтый — стоит, но авария не активна; красный — сработала авария.',
+    starter: '// Conveyor1_Motor := (ButtonStart OR Conveyor1_Motor) AND NOT ButtonStop AND EStop1;\n' +
+      '// Gate1_Open := CTU(C1, Conveyor1_Sensor, 3);\n' +
+      '// Status1_Red := NOT EStop1;\n' +
+      '// Status1_Green := EStop1 AND Conveyor1_Motor;\n' +
+      '// Status1_Yellow := EStop1 AND NOT Conveyor1_Motor;\n',
+    steps: [
+      {set:{ButtonStart:false, ButtonStop:false, EStop1:true, Conveyor1_Sensor:false}, now:0,
+        expect:{Conveyor1_Motor:false, Status1_Red:false, Status1_Yellow:true, Status1_Green:false},
+        hint:'В начале конвейер стоит, авария не нажата — должен гореть жёлтый.'},
+      {set:{ButtonStart:true}, now:0,
+        expect:{Conveyor1_Motor:true, Status1_Green:true, Status1_Yellow:false},
+        hint:'Пуск запускает конвейер — светофор должен стать зелёным.'},
+      {set:{ButtonStart:false}, now:0, expect:{Conveyor1_Motor:true}, hint:'Самоподхват должен удержать конвейер включённым.'},
+      {set:{EStop1:false}, now:0,
+        expect:{Conveyor1_Motor:false, Status1_Red:true, Status1_Green:false, Status1_Yellow:false},
+        hint:'Авария (EStop1=FALSE) должна немедленно остановить конвейер и зажечь красный, независимо от самоподхвата.'},
+      {set:{EStop1:true}, now:0,
+        expect:{Conveyor1_Motor:false, Status1_Red:false, Status1_Yellow:true},
+        hint:'После снятия аварии конвейер НЕ должен запускаться сам — нужно заново нажать Пуск. Светофор — жёлтый.'},
+      {set:{Conveyor1_Sensor:true}, now:0, expect:{Gate1_Open:false}, hint:'Первое срабатывание датчика — ещё рано открывать ворота.'},
+      {set:{Conveyor1_Sensor:false}, now:0, expect:{}, hint:''},
+      {set:{Conveyor1_Sensor:true}, now:0, expect:{Gate1_Open:false}, hint:'Второе срабатывание.'},
+      {set:{Conveyor1_Sensor:false}, now:0, expect:{}, hint:''},
+      {set:{Conveyor1_Sensor:true}, now:0, expect:{Gate1_Open:true}, hint:'Третье срабатывание — ворота должны открыться.'},
+    ],
+  },
+];
+
+let currentTaskIndex = 0;
+const savedTaskCode = {};
+let savedSandboxCode = null;
+const completedTasks = JSON.parse(localStorage.getItem('plcTrainerCompleted') || '[]');
+
+function loadTask(idx) {
+  savedTaskCode[currentTaskIndex] = codeEl.value;
+  currentTaskIndex = idx;
+  const task = TASKS[idx];
+  clearDevices();
+  for (const [type, id, x, y] of task.devices) addDevice(type, x, y, id);
+  document.getElementById('taskDesc').innerHTML =
+    `<b>Уровень ${task.level} · ${task.levelTitle} — ${task.title}</b><br>${task.desc}`;
+  codeEl.value = savedTaskCode[idx] !== undefined ? savedTaskCode[idx] : task.starter;
+  updateHighlight();
+  renderTaskList();
+  hideCheckResult();
+  doCompileAndRun();
+}
+
+function renderTaskList() {
+  const el = document.getElementById('taskList');
+  let html = '';
+  let lastLevel = null;
+  TASKS.forEach((t, i) => {
+    if (t.level !== lastLevel) {
+      if (lastLevel !== null) html += '</div>';
+      html += `<div class="level-header">Уровень ${t.level} · ${t.levelTitle}</div><div class="tasklist">`;
+      lastLevel = t.level;
+    }
+    html += `<button data-i="${i}" class="${i === currentTaskIndex ? 'primary' : ''} ${completedTasks.includes(i) ? 'done' : ''}">${i + 1}</button>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => loadTask(parseInt(b.dataset.i, 10))));
+}
+
+function runTaskCheck() {
+  const task = TASKS[currentTaskIndex];
+  let checkAst;
+  try { checkAst = compile(codeEl.value); }
+  catch (e) { return showCheckResult(false, 'Ошибка компиляции: ' + e.message); }
+  const scope = {};
+  const checkTimers = {};
+  const checkCounters = {};
+  for (const step of task.steps) {
+    Object.assign(scope, step.set);
+    try { execStmts(checkAst, scope, checkTimers, checkCounters, step.now); }
+    catch (e) { return showCheckResult(false, 'Ошибка выполнения: ' + e.message); }
+    for (const key in step.expect) {
+      const got = !!scope[key];
+      const want = !!step.expect[key];
+      if (got !== want) {
+        return showCheckResult(false, `Не пройдено: ожидалось ${key} = ${want ? 'TRUE' : 'FALSE'}, получено ${got ? 'TRUE' : 'FALSE'}.\nПодсказка: ${step.hint}`);
+      }
+    }
+  }
+  if (!completedTasks.includes(currentTaskIndex)) {
+    completedTasks.push(currentTaskIndex);
+    localStorage.setItem('plcTrainerCompleted', JSON.stringify(completedTasks));
+  }
+  renderTaskList();
+  showCheckResult(true, 'Задача решена верно! 🎉' + (currentTaskIndex < TASKS.length - 1 ? ' Можешь переходить к следующей.' : ' Это было последнее задание — дальше пробуй строить свою линию.'));
+}
+
+function showCheckResult(ok, msg) {
+  const el = document.getElementById('checkResult');
+  el.textContent = msg;
+  el.className = 'show ' + (ok ? 'ok' : 'fail');
+}
+function hideCheckResult() {
+  document.getElementById('checkResult').className = '';
+}
+
+/* ---------------- режим "Своя линия" ---------------- */
+
+function initSandbox(fresh) {
+  savedTaskCode[currentTaskIndex] = undefined;
+  if (fresh) {
+    clearDevices();
+    codeEl.value = savedSandboxCode || '// Добавь приборы через палитру слева,\n// потом опиши их поведение здесь.\n';
+  }
+  updateHighlight();
+  doCompileAndRun();
+}
+
+/* ======================================================================
+   ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ
+   ====================================================================== */
+
+function switchMode(mode) {
+  if (world.mode === mode) return;
+  if (world.mode === 'tutorial') savedTaskCode[currentTaskIndex] = codeEl.value;
+  if (world.mode === 'sandbox') savedSandboxCode = codeEl.value;
+  world.mode = mode;
+  world.editMode = false;
+  world.placingType = null;
+  world.selectedId = null;
+  document.getElementById('tabTutorial').classList.toggle('active', mode === 'tutorial');
+  document.getElementById('tabSandbox').classList.toggle('active', mode === 'sandbox');
+  document.getElementById('tutorialPanel').style.display = mode === 'tutorial' ? '' : 'none';
+  document.getElementById('sandboxPanel').style.display = mode === 'sandbox' ? '' : 'none';
+  document.getElementById('tutorialCheckControls').style.display = mode === 'tutorial' ? '' : 'none';
+  updateEditModeButton();
+  if (mode === 'tutorial') {
+    loadTask(currentTaskIndex);
+  } else {
+    clearDevices();
+    let restored = false;
+    try {
+      const saved = JSON.parse(localStorage.getItem('plcSandboxScene') || 'null');
+      if (saved && saved.devices) {
+        world.typeCounters = saved.typeCounters || {};
+        saved.devices.forEach(restoreDevice);
+        restored = true;
+      }
+    } catch (e) { /* ignore corrupt storage */ }
+    codeEl.value = savedSandboxCode !== null ? savedSandboxCode
+      : (restored ? (localStorage.getItem('plcSandboxCode') || '') : '// Добавь приборы через палитру слева,\n// потом опиши их поведение здесь.\n');
+    updateHighlight();
+    doCompileAndRun();
+  }
+}
+
+document.getElementById('tabTutorial').addEventListener('click', () => switchMode('tutorial'));
+document.getElementById('tabSandbox').addEventListener('click', () => switchMode('sandbox'));
+
+/* ======================================================================
+   ПАЛИТРА (режим "Своя линия")
+   ====================================================================== */
+
+function renderPalette() {
+  const el = document.getElementById('palette');
+  el.innerHTML = Object.keys(DEVICE_DEFS).map(type => {
+    const d = DEVICE_DEFS[type];
+    return `<button data-type="${type}" class="${world.placingType === type ? 'armed' : ''}" title="${d.hint || ''}"><span class="emoji">${d.emoji}</span>${d.label}</button>`;
+  }).join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    world.placingType = world.placingType === b.dataset.type ? null : b.dataset.type;
+    world.editMode = true;
+    updateEditModeButton();
+    renderPalette();
+    document.getElementById('btnCancelPlace').style.display = world.placingType ? '' : 'none';
+  }));
+}
+document.getElementById('btnCancelPlace').addEventListener('click', () => {
+  world.placingType = null;
+  renderPalette();
+  document.getElementById('btnCancelPlace').style.display = 'none';
+});
+
+function updateEditModeButton() {
+  const btn = document.getElementById('btnEditMode');
+  btn.textContent = '✏️ Режим правки: ' + (world.editMode ? 'вкл' : 'выкл');
+  btn.classList.toggle('primary', world.editMode);
+  document.getElementById('btnDeleteSelected').disabled = !(world.editMode && world.selectedId);
+  const selectedDev = world.devices.find(d => d.id === world.selectedId);
+  const canRotate = world.editMode && selectedDev && DEVICE_DEFS[selectedDev.type].rotatable;
+  document.getElementById('btnRotateSelected').disabled = !canRotate;
+}
+
+document.getElementById('btnRotateSelected').addEventListener('click', () => {
+  const dev = world.devices.find(d => d.id === world.selectedId);
+  const def = dev && DEVICE_DEFS[dev.type];
+  if (!dev || !def || !def.rotate) return;
+  def.rotate(dev);
+  const fp = def.footprint ? def.footprint(dev) : { w: def.w, h: def.h };
+  dev.x = snap(Math.max(0, Math.min(CANVAS_W - fp.w, dev.x)));
+  dev.y = snap(Math.max(0, Math.min(CANVAS_H - fp.h, dev.y)));
+});
+
+document.getElementById('btnEditMode').addEventListener('click', () => {
+  if (world.mode !== 'sandbox') return;
+  world.editMode = !world.editMode;
+  if (!world.editMode) { world.placingType = null; world.selectedId = null; }
+  updateEditModeButton();
+  renderPalette();
+  document.getElementById('btnCancelPlace').style.display = 'none';
+});
+
+document.getElementById('btnDeleteSelected').addEventListener('click', () => {
+  const dev = world.devices.find(d => d.id === world.selectedId);
+  if (dev) { removeDevice(dev); updateEditModeButton(); toast('Прибор удалён'); }
+});
+
+let clearArmed = false;
+document.getElementById('btnClearAll').addEventListener('click', (e) => {
+  if (!clearArmed) {
+    clearArmed = true;
+    e.target.textContent = 'Точно очистить?';
+    e.target.classList.add('danger');
+    setTimeout(() => { clearArmed = false; e.target.textContent = 'Очистить сцену'; e.target.classList.remove('danger'); }, 3000);
+    return;
+  }
+  clearArmed = false;
+  e.target.textContent = 'Очистить сцену';
+  e.target.classList.remove('danger');
+  clearDevices();
+  world.typeCounters = {};
+  updateEditModeButton();
+  toast('Сцена очищена');
+});
+
+// сериализация приборов: помимо позиции сохраняем настраиваемые поля
+// состояния (сейчас только dir у поворачиваемых приборов) — не всё
+// dev.state целиком, чтобы не тащить физику (boxX, spin и т.п.)
+function serializeDevice(d) {
+  const out = { id: d.id, type: d.type, x: d.x, y: d.y };
+  if (DEVICE_DEFS[d.type].rotatable) out.dir = d.state.dir;
+  return out;
+}
+function restoreDevice(d) {
+  const dev = addDevice(d.type, d.x, d.y, d.id);
+  if (d.dir !== undefined) dev.state.dir = d.dir;
+  return dev;
+}
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  localStorage.setItem('plcSandboxScene', JSON.stringify({
+    devices: world.devices.map(serializeDevice),
+    typeCounters: world.typeCounters,
+  }));
+  localStorage.setItem('plcSandboxCode', codeEl.value);
+  toast('Линия сохранена в этом браузере');
+});
+
+document.getElementById('btnLoad').addEventListener('click', () => {
+  const raw = localStorage.getItem('plcSandboxScene');
+  if (!raw) { toast('Сохранённой линии не найдено'); return; }
+  try {
+    const saved = JSON.parse(raw);
+    clearDevices();
+    world.typeCounters = saved.typeCounters || {};
+    saved.devices.forEach(restoreDevice);
+    codeEl.value = localStorage.getItem('plcSandboxCode') || codeEl.value;
+    updateHighlight();
+    doCompileAndRun();
+    toast('Линия загружена');
+  } catch (e) { toast('Не удалось загрузить сохранённую линию'); }
+});
+
+document.getElementById('btnExportToggle').addEventListener('click', () => {
+  document.getElementById('exportArea').classList.toggle('show');
+});
+document.getElementById('btnExportFill').addEventListener('click', () => {
+  document.getElementById('exportText').value = JSON.stringify({
+    devices: world.devices.map(serializeDevice),
+    typeCounters: world.typeCounters,
+    code: codeEl.value,
+  }, null, 2);
+  document.getElementById('exportArea').classList.add('show');
+});
+document.getElementById('btnImportApply').addEventListener('click', () => {
+  try {
+    const data = JSON.parse(document.getElementById('exportText').value);
+    clearDevices();
+    world.typeCounters = data.typeCounters || {};
+    (data.devices || []).forEach(restoreDevice);
+    if (typeof data.code === 'string') codeEl.value = data.code;
+    updateHighlight();
+    doCompileAndRun();
+    toast('Импортировано');
+  } catch (e) { toast('Ошибка импорта: проверь текст JSON'); }
+});
+
+/* ======================================================================
+   МЫШЬ НА СЦЕНЕ: размещение / перетаскивание / нажатие приборов
+   ====================================================================== */
+
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+
+function canvasPoint(evt) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+  return {
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height),
+  };
+}
+
+function topDeviceAt(x, y) {
+  for (let i = world.devices.length - 1; i >= 0; i--) {
+    if (pointInDevice(world.devices[i], x, y)) return world.devices[i];
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', (evt) => onCanvasDown(canvasPoint(evt), evt));
+canvas.addEventListener('touchstart', (evt) => { onCanvasDown(canvasPoint(evt), evt); }, {passive:true});
+
+function onCanvasDown(pt, evt) {
+  ensureAudio();
+  if (world.mode === 'sandbox' && world.placingType) {
+    const def = DEVICE_DEFS[world.placingType];
+    addDevice(world.placingType, pt.x - def.w / 2, pt.y - def.h / 2);
+    renderTagTable();
+    return;
+  }
+  if (world.mode === 'sandbox' && world.editMode) {
+    const dev = topDeviceAt(pt.x, pt.y);
+    world.selectedId = dev ? dev.id : null;
+    updateEditModeButton();
+    if (dev) {
+      world.dragging = { dev, offX: pt.x - dev.x, offY: pt.y - dev.y };
+      window.addEventListener('mousemove', onDragMove);
+      window.addEventListener('mouseup', onDragEnd);
+      window.addEventListener('touchmove', onDragMove, {passive:true});
+      window.addEventListener('touchend', onDragEnd);
+    }
+    return;
+  }
+  // режим "работы": клик по интерактивному прибору (кнопка/тумблер)
+  const dev = topDeviceAt(pt.x, pt.y);
+  if (!dev) return;
+  const def = DEVICE_DEFS[dev.type];
+  if (def.interactive === 'momentary') {
+    dev.state.pressed = true;
+    IO[dev.id] = true;
+    const up = () => {
+      dev.state.pressed = false;
+      IO[dev.id] = false;
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchend', up);
+    };
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchend', up);
+  } else if (def.interactive === 'toggle') {
+    IO[dev.id] = !IO[dev.id];
+  } else if (def.interactive === 'estop') {
+    // нормально-замкнутый контакт: IO=TRUE значит "всё в порядке"
+    dev.state.latched = !dev.state.latched;
+    IO[dev.id] = !dev.state.latched;
+  }
+}
+
+function onDragMove(evt) {
+  if (!world.dragging) return;
+  const pt = canvasPoint(evt);
+  const { dev, offX, offY } = world.dragging;
+  const def = DEVICE_DEFS[dev.type];
+  dev.x = snap(Math.max(0, Math.min(CANVAS_W - def.w, pt.x - offX)));
+  dev.y = snap(Math.max(0, Math.min(CANVAS_H - def.h, pt.y - offY)));
+}
+function onDragEnd() {
+  world.dragging = null;
+  window.removeEventListener('mousemove', onDragMove);
+  window.removeEventListener('mouseup', onDragEnd);
+  window.removeEventListener('touchmove', onDragMove);
+  window.removeEventListener('touchend', onDragEnd);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (world.mode === 'sandbox' && world.editMode && world.selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
+    if (document.activeElement === codeEl) return;
+    const dev = world.devices.find(d => d.id === world.selectedId);
+    if (dev) { removeDevice(dev); updateEditModeButton(); }
+  }
+  if (e.key === 'Escape' && world.placingType) {
+    world.placingType = null; renderPalette();
+    document.getElementById('btnCancelPlace').style.display = 'none';
+  }
+});
+
+/* ======================================================================
+   ЗВУК СИРЕНЫ (Web Audio, лениво инициализируется по первому клику)
+   ====================================================================== */
+
+let audioCtx = null, sirenOsc = null, sirenGain = null, soundOn = false;
+document.getElementById('soundToggle').addEventListener('change', (e) => { soundOn = e.target.checked; });
+function ensureAudio() {
+  if (audioCtx || !soundOn) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    sirenGain = audioCtx.createGain();
+    sirenGain.gain.value = 0;
+    sirenGain.connect(audioCtx.destination);
+    sirenOsc = audioCtx.createOscillator();
+    sirenOsc.type = 'sawtooth';
+    sirenOsc.frequency.value = 440;
+    sirenOsc.connect(sirenGain);
+    sirenOsc.start();
+  } catch (e) { /* audio unavailable — silently skip */ }
+}
+function updateSirenSound() {
+  if (!audioCtx || !sirenGain) return;
+  const anyOn = soundOn && world.devices.some(d => d.type === 'siren' && IO[d.id]);
+  sirenGain.gain.setTargetAtTime(anyOn ? 0.05 : 0, audioCtx.currentTime, 0.05);
+  if (anyOn) sirenOsc.frequency.setTargetAtTime(makeBlink(280) ? 620 : 440, audioCtx.currentTime, 0.02);
+}
+
+/* ======================================================================
+   ТАБЛИЦА ТЕГОВ / ОШИБКИ / ТОСТ
+   ====================================================================== */
+
+const errorBox = document.getElementById('errorBox');
+function showError(msg) { errorBox.textContent = msg; errorBox.classList.add('show'); }
+function clearError() { errorBox.classList.remove('show'); errorBox.textContent = ''; }
+
+function renderTagTable() {
+  const tbody = document.querySelector('#tagTable tbody');
+  const rows = [];
+  for (const dev of world.devices) {
+    for (const t of DEVICE_DEFS[dev.type].tags(dev.id)) {
+      const v = !!IO[t.key];
+      rows.push(`<tr><td>${t.key}</td><td class="dir-${t.dir.toLowerCase()}">${t.dir}</td><td class="${v ? 'val-on' : 'val-off'}">${v ? 'TRUE' : 'FALSE'}</td></tr>`);
+    }
+  }
+  tbody.innerHTML = rows.length
+    ? rows.join('')
+    : '<tr><td colspan="3" class="tagtable-empty">Нет приборов на линии</td></tr>';
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ======================================================================
+   ЦИКЛ СКАНИРОВАНИЯ (ЛОГИКА ПЛК)
+   ====================================================================== */
+
+const scanBadge = document.getElementById('scanBadge');
+
+function runScan() {
+  if (!ast) return;
+  try {
+    execStmts(ast, IO, timers, counters, performance.now());
+    clearError();
+  } catch (e) {
+    showError('Ошибка выполнения: ' + e.message);
+    stopScan();
+  }
+  renderTagTable();
+}
+
+function startScan() {
+  stopScan();
+  const rate = parseInt(document.getElementById('scanRate').value, 10);
+  scanTimerHandle = setInterval(runScan, rate);
+  scanBadge.textContent = 'сканирование: ' + rate + ' мс';
+  scanBadge.classList.add('running');
+}
+function stopScan() {
+  if (scanTimerHandle) clearInterval(scanTimerHandle);
+  scanTimerHandle = null;
+  scanBadge.textContent = 'остановлено';
+  scanBadge.classList.remove('running');
+}
+document.getElementById('scanRate').addEventListener('change', () => { if (scanTimerHandle) startScan(); });
+
+/* ======================================================================
+   РЕДАКТОР: подсветка синтаксиса (оверлей textarea/pre)
+   ====================================================================== */
+
+const codeEl = document.getElementById('code');
+const highlightCode = document.querySelector('#highlight code');
+
+const HL_RE = /(\(\*[\s\S]*?\*\)|\/\/[^\n]*)|(\b(?:IF|THEN|ELSE|END_IF|AND|OR|NOT|TRUE|FALSE)\b)|(\bTON\b)|(:=)|(\b\d+\b)|([A-Za-z_][A-Za-z0-9_]*)/gi;
+
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function updateHighlight() {
+  const src = codeEl.value;
+  let out = '', last = 0, m;
+  HL_RE.lastIndex = 0;
+  while ((m = HL_RE.exec(src))) {
+    if (m.index > last) out += escapeHtml(src.slice(last, m.index));
+    const text = escapeHtml(m[0]);
+    if (m[1]) out += `<span class="tok-cm">${text}</span>`;
+    else if (m[2]) out += `<span class="tok-kw">${text}</span>`;
+    else if (m[3]) out += `<span class="tok-fn">${text}</span>`;
+    else if (m[4]) out += `<span class="tok-op">${text}</span>`;
+    else if (m[5]) out += `<span class="tok-num">${text}</span>`;
+    else if (m[6]) {
+      const dir = IO_DIR_HINT(m[6]);
+      out += dir ? `<span class="tok-tag-${dir.toLowerCase()}">${text}</span>` : text;
+    }
+    last = HL_RE.lastIndex;
+  }
+  out += escapeHtml(src.slice(last));
+  highlightCode.innerHTML = out + '\n';
+}
+
+function IO_DIR_HINT(name) {
+  for (const dev of world.devices) {
+    for (const t of DEVICE_DEFS[dev.type].tags(dev.id)) {
+      if (t.key === name) return t.dir;
+    }
+  }
+  return null;
+}
+
+codeEl.addEventListener('input', updateHighlight);
+codeEl.addEventListener('scroll', () => {
+  document.getElementById('highlight').scrollTop = codeEl.scrollTop;
+  document.getElementById('highlight').scrollLeft = codeEl.scrollLeft;
+});
+codeEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = codeEl.selectionStart, en = codeEl.selectionEnd;
+    codeEl.value = codeEl.value.slice(0, s) + '  ' + codeEl.value.slice(en);
+    codeEl.selectionStart = codeEl.selectionEnd = s + 2;
+    updateHighlight();
+  }
+});
+
+/* ======================================================================
+   КОМПИЛЯЦИЯ / ЗАПУСК / СБРОС
+   ====================================================================== */
+
+function doCompileAndRun() {
+  try {
+    ast = compile(codeEl.value);
+    clearError();
+    timers = {};
+    counters = {};
+    startScan();
+  } catch (e) {
+    ast = null;
+    stopScan();
+    showError('Ошибка компиляции: ' + e.message);
+  }
+  renderTagTable();
+}
+document.getElementById('btnRun').addEventListener('click', doCompileAndRun);
+document.getElementById('btnCheck').addEventListener('click', runTaskCheck);
+document.getElementById('btnResetState').addEventListener('click', () => { resetDeviceStates(); toast('Состояние сброшено'); });
+
+/* ======================================================================
+   ФИЗИКА / ОТРИСОВКА
+   ====================================================================== */
+
+let lastFrame = null;
+
+function stepPhysics(dt) {
+  const boxPositions = [];
+  for (const dev of world.devices) if (dev.type === 'conveyor') DEVICE_DEFS.conveyor.physics(dev, dt, boxPositions);
+  for (const dev of world.devices) if (dev.type !== 'conveyor') DEVICE_DEFS[dev.type].physics(dev, dt, boxPositions);
+  updateSirenSound();
+}
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+  for (let x = 0; x < CANVAS_W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CANVAS_H); ctx.stroke(); }
+  for (let y = 0; y < CANVAS_H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CANVAS_W,y); ctx.stroke(); }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = '#212936'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  drawGrid();
+  for (const dev of world.devices) {
+    DEVICE_DEFS[dev.type].draw(ctx, dev);
+    if (world.mode === 'sandbox' && world.editMode && dev.id === world.selectedId) {
+      const r = deviceRect(dev);
+      ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+      ctx.strokeRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8);
+      ctx.setLineDash([]);
+    }
+  }
+  if (world.mode === 'sandbox' && world.placingType) {
+    ctx.fillStyle = '#8a94a6'; ctx.font = '12px sans-serif';
+    ctx.fillText('Кликни по сцене, чтобы поставить: ' + DEVICE_DEFS[world.placingType].label, 10, 16);
+  }
+}
+
+function frame(ts) {
+  if (lastFrame == null) lastFrame = ts;
+  const dt = Math.min(0.1, (ts - lastFrame) / 1000);
+  lastFrame = ts;
+  stepPhysics(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+/* ======================================================================
+   СТАРТ
+   ====================================================================== */
+
+renderPalette();
+updateEditModeButton();
+renderTaskList();
+loadTask(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

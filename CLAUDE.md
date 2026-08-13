@@ -19,6 +19,22 @@ locally (e.g. `python3 -m http.server`) to avoid `file://` quirks. All
 persistence (sandbox layout, code, completed-tutorial tracking) uses
 `localStorage` — there is no server-side state.
 
+## Relationship to `plc-field-assistant/`
+
+This `index.html` is also embedded, byte-for-byte copied, as the
+"Тренажёр" tab inside the separate React/TS/Vite app in
+`plc-field-assistant/` (see that folder's own `CLAUDE.md`-equivalent —
+its `README.md` — for its architecture: field-tech modules, a Windows
+Electron `.exe` build, and a trimmed phone PWA build). The copy lives at
+`plc-field-assistant/public/trainer/index.html` and is loaded via
+`<iframe src="trainer/index.html">` (relative path — required so it
+still resolves under Electron's `file://` protocol).
+
+**Whenever you change this root `index.html`, copy it over**:
+`cp index.html plc-field-assistant/public/trainer/index.html` from the
+repo root. Nothing automates this sync — the two files silently diverge
+otherwise and the embedded tab keeps showing the old trainer.
+
 ## Windows launcher (`icon.ico`, `launch.vbs`, `create-shortcut.vbs`)
 
 These three files let a Windows user run `index.html` as an app-like window

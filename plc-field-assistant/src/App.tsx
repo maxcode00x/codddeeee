@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { HashRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import db from './db/schema';
 import { CalculatorsPage } from './modules/calculators/CalculatorsPage';
@@ -9,16 +9,34 @@ import { ReferencePage } from './modules/reference/ReferencePage';
 import { PunchListPage } from './modules/punchlist/PunchListPage';
 import { EquipmentPage } from './modules/equipment/EquipmentPage';
 import { ProjectVersionsPage } from './modules/versions/ProjectVersionsPage';
+import { WizardPage } from './modules/wizard/WizardPage';
+import { StatisticsPage } from './modules/statistics/StatisticsPage';
+import { TrainerPage } from './modules/trainer/TrainerPage';
 
-const NAV_ITEMS = [
+const PHONE_MODE = import.meta.env.VITE_APP_TARGET === 'phone';
+
+const FULL_NAV_ITEMS = [
+  { to: '/trainer', label: 'Тренажёр', emoji: '🎮' },
   { to: '/', label: 'Журнал', emoji: '🛠' },
   { to: '/io', label: 'I/O', emoji: '🔌' },
   { to: '/punch', label: 'Замечания', emoji: '📋' },
+  { to: '/wizard', label: 'Мастер', emoji: '🧭' },
   { to: '/calc', label: 'Калькуляторы', emoji: '🧮' },
   { to: '/equipment', label: 'Паспорт', emoji: '🗄' },
   { to: '/versions', label: 'Версии', emoji: '🗂' },
+  { to: '/stats', label: 'Статистика', emoji: '📊' },
   { to: '/reference', label: 'Справочник', emoji: '📘' },
 ];
+
+// Урезанная телефонная версия: журнал, калькуляторы, справочник — без тренажёра и без
+// модулей, рассчитанных на полноценный ввод данных на объекте (I/O, замечания, паспорт, версии).
+const PHONE_NAV_ITEMS = [
+  { to: '/', label: 'Журнал', emoji: '🛠' },
+  { to: '/calc', label: 'Калькуляторы', emoji: '🧮' },
+  { to: '/reference', label: 'Справочник', emoji: '📘' },
+];
+
+const NAV_ITEMS = PHONE_MODE ? PHONE_NAV_ITEMS : FULL_NAV_ITEMS;
 
 function useTheme() {
   const [dark, setDark] = useState(() => localStorage.getItem('pfa-theme') === 'dark');
@@ -84,22 +102,40 @@ function NavBar({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => voi
   );
 }
 
+function AppRoutes() {
+  const { pathname } = useLocation();
+  const isTrainer = pathname === '/trainer';
+
+  return (
+    <main className={`flex-1 ${isTrainer ? 'overflow-hidden' : 'overflow-y-auto pb-16 sm:pb-0'}`}>
+      <Routes>
+        {!PHONE_MODE && <Route path="/trainer" element={<TrainerPage />} />}
+        <Route path="/" element={<FaultLogPage />} />
+        <Route path="/calc" element={<CalculatorsPage />} />
+        <Route path="/reference" element={<ReferencePage />} />
+        {!PHONE_MODE && (
+          <>
+            <Route path="/io" element={<IoTablePage />} />
+            <Route path="/punch" element={<PunchListPage />} />
+            <Route path="/wizard" element={<WizardPage />} />
+            <Route path="/equipment" element={<EquipmentPage />} />
+            <Route path="/versions" element={<ProjectVersionsPage />} />
+            <Route path="/stats" element={<StatisticsPage />} />
+          </>
+        )}
+      </Routes>
+    </main>
+  );
+}
+
 function App() {
   const [dark, setDark] = useTheme();
 
   return (
     <HashRouter>
-      <div className="min-h-screen bg-slate-50 pb-16 dark:bg-slate-900 sm:pb-0">
+      <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
         <NavBar dark={dark} setDark={setDark} />
-        <Routes>
-          <Route path="/" element={<FaultLogPage />} />
-          <Route path="/io" element={<IoTablePage />} />
-          <Route path="/punch" element={<PunchListPage />} />
-          <Route path="/calc" element={<CalculatorsPage />} />
-          <Route path="/equipment" element={<EquipmentPage />} />
-          <Route path="/versions" element={<ProjectVersionsPage />} />
-          <Route path="/reference" element={<ReferencePage />} />
-        </Routes>
+        <AppRoutes />
       </div>
     </HashRouter>
   );
