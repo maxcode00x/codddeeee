@@ -613,7 +613,7 @@ function rotatePoint(local, angle) {
 // та же модель поворота на 90° и одна ось, вдоль которой едет коробка. Через
 // эти хелперы конвейеры и диверторы находят друг друга по стыковке (см.
 // resolveExit ниже) вместо старой проверки только близости к воротам/дверям.
-const RAIL_TYPES = ['conveyor', 'diverter', 'buffer'];
+const RAIL_TYPES = ['conveyor', 'diverter', 'buffer', 'robot'];
 function railFootprint(w, h, dir) {
   return (dir % 2 === 1) ? { w: h, h: w } : { w, h };
 }
@@ -892,6 +892,85 @@ const DEVICE_DEFS = {
         drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
           top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
         }, BELT_H);
+      }
+
+      label(ctx, dev.id, dev.x, dev.y - 6);
+    }
+  },
+
+  robot: {
+    label: 'Робот-манипулятор', emoji: '🦾', idPrefix: 'Robot', w: 70, h: 70, rotatable: true,
+    hint: 'Принимает деталь со входа как обычный рельсовый прибор (см. подсказку конвейера), но не везёт её сам — ждёт. По переднему фронту тега _Cycle (лог. 0→1) переносит деталь на выход, повёрнутый на 90° от входа, с анимацией подъёма и переноса. Пока переносит (или пока приёмник на выходе занят) — занят, _Busy = TRUE, новую деталь не берёт.',
+    tags(id) { return [{key:`${id}_Cycle`, dir:'OUT'}, {key:`${id}_Busy`, dir:'IN'}]; },
+    makeState() { return { boxes: [], dir: 0, phase: 'idle', t: 0, prevCycle: false }; },
+    footprint(dev) { return railFootprint(DEVICE_DEFS.robot.w, DEVICE_DEFS.robot.h, dev.state.dir); },
+    rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
+    // единственный выход робота — вбок (90° от входа), как боковой выход дивертора
+    exitPoints(dev) {
+      const { w, h } = DEVICE_DEFS.robot;
+      return [sideExitPoint(dev, w, h)];
+    },
+    acceptBox(dev) {
+      if (dev.state.phase !== 'idle' || dev.state.boxes.length > 0) return false;
+      dev.state.boxes.push(0);
+      dev.state.phase = 'loaded';
+      return true;
+    },
+    physics(dev, dt, boxPositions) {
+      const { w, h } = DEVICE_DEFS.robot;
+      const CYCLE_DUR = 1.0;
+      const cycle = !!IO[`${dev.id}_Cycle`];
+      const st = dev.state;
+      const risingEdge = cycle && !st.prevCycle;
+      st.prevCycle = cycle;
+
+      if (st.phase === 'loaded' && risingEdge) { st.phase = 'moving'; st.t = 0; }
+      if (st.phase === 'moving') {
+        st.t = Math.min(CYCLE_DUR, st.t + dt);
+        if (st.t >= CYCLE_DUR) {
+          const exit = sideExitPoint(dev, w, h);
+          const res = resolveExit(exit, dev);
+          if (res.rail && DEVICE_DEFS[res.rail.type].acceptBox(res.rail, 0)) {
+            st.boxes = [];
+            st.phase = 'idle';
+          }
+          // иначе ждём на месте с поднятой деталью, пока приёмник не освободится
+        }
+      }
+      IO[`${dev.id}_Busy`] = st.phase !== 'idle';
+
+      if (st.boxes.length > 0) {
+        const center = railCenter(dev, w, h);
+        const angle = dev.state.dir * Math.PI / 2;
+        const frac = st.phase === 'moving' ? st.t / CYCLE_DUR : 0;
+        const localX = -w / 2 + (w / 2) * frac; // от входа (-w/2,0) к точке над центром
+        const localY = (h / 2) * frac;           // ...и дальше к боковому выходу (0,h/2)
+        const off = rotatePoint({ x: localX, y: localY }, angle);
+        boxPositions.push({ x: center.x + off.x, y: center.y + off.y });
+      }
+    },
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.robot;
+      const fp = DEVICE_DEFS.robot.footprint(dev);
+      const st = dev.state;
+      const busy = !!IO[`${dev.id}_Busy`];
+
+      drawIsoBox(dev.x, dev.y, fp.w, fp.h, 10, {
+        top: busy ? '#3a2a1c' : '#232c3a', left: '#10141b', right: '#191f29',
+        edge: busy ? '#f0b429' : '#39465a',
+      });
+
+      if (st.boxes.length > 0) {
+        const center = railCenter(dev, w, h);
+        const angle = dev.state.dir * Math.PI / 2;
+        const frac = st.phase === 'moving' ? st.t / 1.0 : 0;
+        const localX = -w / 2 + (w / 2) * frac, localY = (h / 2) * frac;
+        const off = rotatePoint({ x: localX, y: localY }, angle);
+        const lift = Math.sin(Math.min(1, frac) * Math.PI) * 26; // дуга подъёма на середине переноса
+        const boxW = 24;
+        drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
+          top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
+        }, 10 + lift);
       }
 
       label(ctx, dev.id, dev.x, dev.y - 6);
