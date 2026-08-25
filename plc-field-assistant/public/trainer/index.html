@@ -613,7 +613,10 @@ function rotatePoint(local, angle) {
 // та же модель поворота на 90° и одна ось, вдоль которой едет коробка. Через
 // эти хелперы конвейеры и диверторы находят друг друга по стыковке (см.
 // resolveExit ниже) вместо старой проверки только близости к воротам/дверям.
-const RAIL_TYPES = ['conveyor', 'diverter', 'buffer', 'robot'];
+const RAIL_TYPES = ['conveyor', 'diverter', 'buffer', 'robot', 'palletizer'];
+// локальные X-смещения слотов палетайзера (3 в ряд), общие для physics и draw
+const PALLET_SLOT_X = [-25, 0, 25];
+const PALLET_PER_LAYER = 3, PALLET_LAYERS = 2, PALLET_CAPACITY = PALLET_PER_LAYER * PALLET_LAYERS;
 function railFootprint(w, h, dir) {
   return (dir % 2 === 1) ? { w: h, h: w } : { w, h };
 }
@@ -971,6 +974,61 @@ const DEVICE_DEFS = {
         drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
           top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
         }, 10 + lift);
+      }
+
+      label(ctx, dev.id, dev.x, dev.y - 6);
+    }
+  },
+
+  palletizer: {
+    label: 'Палетайзер', emoji: '🏗️', idPrefix: 'Palletizer', w: 110, h: 90, rotatable: true,
+    hint: 'Принимает детали со входа (как рельсовый прибор) и укладывает их на поддон штабелем — 3 в ряд, 2 слоя. Тег _PalletFull включается, когда поддон полон. По переднему фронту тега _Eject поддон «увозят» — счётчик сбрасывается. У палетайзера нет выхода — это конечная точка линии, ставить конвейер после него не нужно.',
+    tags(id) { return [{key:`${id}_Eject`, dir:'OUT'}, {key:`${id}_PalletFull`, dir:'IN'}]; },
+    makeState() { return { count: 0, dir: 0, prevEject: false }; },
+    footprint(dev) { return railFootprint(DEVICE_DEFS.palletizer.w, DEVICE_DEFS.palletizer.h, dev.state.dir); },
+    rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
+    exitPoints() { return []; }, // конечная точка — никого не «кормит» дальше по линии
+    acceptBox(dev) {
+      if (dev.state.count >= PALLET_CAPACITY) return false;
+      dev.state.count++;
+      return true;
+    },
+    physics(dev, dt, boxPositions) {
+      const { w, h } = DEVICE_DEFS.palletizer;
+      const eject = !!IO[`${dev.id}_Eject`];
+      const st = dev.state;
+      const risingEdge = eject && !st.prevEject;
+      st.prevEject = eject;
+      if (risingEdge && st.count > 0) st.count = 0;
+      IO[`${dev.id}_PalletFull`] = st.count >= PALLET_CAPACITY;
+
+      const center = railCenter(dev, w, h);
+      const angle = dev.state.dir * Math.PI / 2;
+      for (let i = 0; i < st.count; i++) {
+        const off = rotatePoint({ x: PALLET_SLOT_X[i % PALLET_PER_LAYER], y: 0 }, angle);
+        boxPositions.push({ x: center.x + off.x, y: center.y + off.y });
+      }
+    },
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.palletizer;
+      const fp = DEVICE_DEFS.palletizer.footprint(dev);
+      const st = dev.state;
+      const full = st.count >= PALLET_CAPACITY;
+
+      drawIsoBox(dev.x, dev.y, fp.w, fp.h, 6, {
+        top: full ? '#3a2a1c' : '#232c3a', left: '#10141b', right: '#191f29',
+        edge: full ? '#f0b429' : '#39465a',
+      });
+
+      const center = railCenter(dev, w, h);
+      const angle = dev.state.dir * Math.PI / 2;
+      const boxW = 24;
+      for (let i = 0; i < st.count; i++) {
+        const layer = Math.floor(i / PALLET_PER_LAYER);
+        const off = rotatePoint({ x: PALLET_SLOT_X[i % PALLET_PER_LAYER], y: 0 }, angle);
+        drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
+          top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
+        }, 6 + layer * 20);
       }
 
       label(ctx, dev.id, dev.x, dev.y - 6);
