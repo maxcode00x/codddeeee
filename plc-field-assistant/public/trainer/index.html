@@ -613,7 +613,7 @@ function rotatePoint(local, angle) {
 // та же модель поворота на 90° и одна ось, вдоль которой едет коробка. Через
 // эти хелперы конвейеры и диверторы находят друг друга по стыковке (см.
 // resolveExit ниже) вместо старой проверки только близости к воротам/дверям.
-const RAIL_TYPES = ['conveyor', 'diverter'];
+const RAIL_TYPES = ['conveyor', 'diverter', 'buffer'];
 function railFootprint(w, h, dir) {
   return (dir % 2 === 1) ? { w: h, h: w } : { w, h };
 }
@@ -825,6 +825,74 @@ const DEVICE_DEFS = {
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.stroke();
+
+      label(ctx, dev.id, dev.x, dev.y - 6);
+    }
+  },
+
+  buffer: {
+    label: 'Накопитель', emoji: '🗃️', idPrefix: 'Buffer', w: 220, h: 40, rotatable: true,
+    hint: 'Как конвейер, но вмещает несколько деталей подряд впритык друг к другу — используй перед узким местом линии, чтобы копить детали, пока оно занято. Тег _Full включается, когда накопитель заполнен под завязку. В отличие от конвейера сам собой деталями не пополняется — ждёт, пока что-то подаст их сверху по потоку.',
+    tags(id) { return [{key:`${id}_Motor`, dir:'OUT'}, {key:`${id}_Full`, dir:'IN'}]; },
+    makeState() { return { boxes: [], dir: 0 }; },
+    footprint(dev) { return railFootprint(DEVICE_DEFS.buffer.w, DEVICE_DEFS.buffer.h, dev.state.dir); },
+    rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
+    capacity: 6,
+    acceptBox(dev, overflow) {
+      if (dev.state.boxes.length >= DEVICE_DEFS.buffer.capacity) return false;
+      dev.state.boxes.push(Math.max(0, overflow || 0));
+      return true;
+    },
+    physics(dev, dt, boxPositions) {
+      const w = DEVICE_DEFS.buffer.w, h = DEVICE_DEFS.buffer.h, boxW = 24, gap = 6, speed = 42;
+      const motorOn = !!IO[`${dev.id}_Motor`];
+      const boxes = dev.state.boxes;
+
+      for (let i = boxes.length - 1; i >= 0; i--) {
+        const ahead = i < boxes.length - 1 ? boxes[i + 1] : null;
+        const maxX = ahead !== null ? ahead - boxW - gap : Infinity;
+        let next = motorOn ? Math.min(boxes[i] + speed * dt, maxX) : boxes[i];
+        if (next + boxW > w) {
+          const exit = railExitPoint(dev, w, h);
+          const res = resolveExit(exit, dev);
+          if (res.rail) {
+            const rdef = DEVICE_DEFS[res.rail.type];
+            if (rdef.acceptBox(res.rail, w - next)) { boxes.splice(i, 1); continue; }
+          }
+          next = Math.min(next, w - boxW); // заблокировано или открытый конец — просто копится у выхода
+        }
+        boxes[i] = next;
+      }
+
+      IO[`${dev.id}_Full`] = boxes.length >= DEVICE_DEFS.buffer.capacity;
+
+      const angle = dev.state.dir * Math.PI / 2;
+      const center = railCenter(dev, w, h);
+      for (const bx of boxes) {
+        const off = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+        boxPositions.push({ x: center.x + off.x, y: center.y + off.y });
+      }
+    },
+    draw(ctx, dev) {
+      const BELT_H = 14;
+      const { w, h } = DEVICE_DEFS.buffer;
+      const fp = DEVICE_DEFS.buffer.footprint(dev);
+      const angle = dev.state.dir * Math.PI / 2;
+      const center = railCenter(dev, w, h);
+      const full = !!IO[`${dev.id}_Full`];
+
+      drawIsoBox(dev.x, dev.y, fp.w, fp.h, BELT_H, {
+        top: full ? '#3a2a1c' : '#232c3a', left: '#10141b', right: '#191f29',
+        edge: full ? '#f0b429' : '#39465a',
+      });
+
+      const boxW = 24;
+      for (const bx of dev.state.boxes) {
+        const off = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+        drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
+          top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
+        }, BELT_H);
+      }
 
       label(ctx, dev.id, dev.x, dev.y - 6);
     }
