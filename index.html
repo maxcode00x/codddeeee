@@ -520,53 +520,107 @@ function snap(v) { return Math.round(v / GRID) * GRID; }
 
 function makeBlink(period) { return Math.floor(performance.now() / period) % 2 === 0; }
 
-// поворот вращаемых приборов (сейчас только конвейер): 0=вправо,1=вниз,2=влево,3=вверх
+// поворот вращаемых приборов (конвейер, дивертор): 0=вправо,1=вниз,2=влево,3=вверх
 function rotatePoint(local, angle) {
   const c = Math.cos(angle), s = Math.sin(angle);
   return { x: local.x * c - local.y * s, y: local.x * s + local.y * c };
 }
 
+// общая геометрия «рельсовых» приборов — конвейера и дивертора: у обоих одна и
+// та же модель поворота на 90° и одна ось, вдоль которой едет коробка. Через
+// эти хелперы конвейеры и диверторы находят друг друга по стыковке (см.
+// resolveExit ниже) вместо старой проверки только близости к воротам/дверям.
+const RAIL_TYPES = ['conveyor', 'diverter'];
+function railFootprint(w, h, dir) {
+  return (dir % 2 === 1) ? { w: h, h: w } : { w, h };
+}
+function railCenter(dev, w, h) {
+  const fp = railFootprint(w, h, dev.state.dir);
+  return { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
+}
+// точка выхода коробки по ходу движения (мировые координаты + угол хода)
+function railExitPoint(dev, w, h) {
+  const angle = dev.state.dir * Math.PI / 2;
+  const c = railCenter(dev, w, h);
+  const off = rotatePoint({ x: w / 2, y: 0 }, angle);
+  return { x: c.x + off.x, y: c.y + off.y, angle };
+}
+// боковой выход дивертора — на 90° по часовой от направления хода
+function sideExitPoint(dev, w, h) {
+  const angle = dev.state.dir * Math.PI / 2 + Math.PI / 2;
+  const c = railCenter(dev, w, h);
+  const off = rotatePoint({ x: 0, y: h / 2 }, dev.state.dir * Math.PI / 2);
+  return { x: c.x + off.x, y: c.y + off.y, angle };
+}
+function railEntryPoint(dev, w, h) {
+  const angle = dev.state.dir * Math.PI / 2;
+  const c = railCenter(dev, w, h);
+  const off = rotatePoint({ x: -w / 2, y: 0 }, angle);
+  return { x: c.x + off.x, y: c.y + off.y, angle };
+}
+
 const DEVICE_DEFS = {
   conveyor: {
     label: 'Конвейер', emoji: '📦', idPrefix: 'Conveyor', w: 170, h: 40, rotatable: true,
-    hint: 'Выдели в режиме правки и нажми «⟳ Повернуть», чтобы менять направление движения (вправо/вниз/влево/вверх).',
+    hint: 'Выдели в режиме правки и нажми «⟳ Повернуть», чтобы менять направление движения (вправо/вниз/влево/вверх). Поставь второй конвейер впритык к выходу первого (с тем же направлением) — коробки поедут с одного на другой по-настоящему.',
     tags(id) { return [{key:`${id}_Motor`, dir:'OUT'}, {key:`${id}_Sensor`, dir:'IN'}]; },
-    makeState() { return { boxX: 0, dir: 0 }; },
-    footprint(dev) {
-      const { w, h } = DEVICE_DEFS.conveyor;
-      return (dev.state.dir % 2 === 1) ? { w: h, h: w } : { w, h };
-    },
+    makeState() { return { boxes: [], dir: 0 }; },
+    footprint(dev) { return railFootprint(DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h, dev.state.dir); },
     rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
+    // принять коробку от прибора выше по потоку — true, если на ленте есть место
+    acceptBox(dev, overflow) {
+      if (dev.state.boxes.length > 0) return false;
+      dev.state.boxes.push(Math.max(0, overflow || 0));
+      return true;
+    },
     physics(dev, dt, boxPositions) {
-      const w = DEVICE_DEFS.conveyor.w, h = DEVICE_DEFS.conveyor.h, boxW = 24;
+      const w = DEVICE_DEFS.conveyor.w, h = DEVICE_DEFS.conveyor.h, boxW = 24, gap = 6, speed = 42;
       const motorKey = `${dev.id}_Motor`, sensorKey = `${dev.id}_Sensor`;
       const zoneStart = w - 70, zoneEnd = w - 14;
-      let bx = dev.state.boxX;
-      const inZone = bx + boxW >= zoneStart && bx <= zoneEnd + 18;
-      IO[sensorKey] = inZone;
+      const motorOn = !!IO[motorKey];
+      const boxes = dev.state.boxes;
+
+      // идём от «головы» (ближе к выходу) к «хвосту» — голова освобождает
+      // место, потом подтягивается хвост
+      for (let i = boxes.length - 1; i >= 0; i--) {
+        const ahead = i < boxes.length - 1 ? boxes[i + 1] : null;
+        const maxX = ahead !== null ? ahead - boxW - gap : Infinity;
+        let next = motorOn ? Math.min(boxes[i] + speed * dt, maxX) : boxes[i];
+
+        if (next + boxW > w) {
+          const exit = railExitPoint(dev, w, h);
+          const res = resolveExit(exit, dev);
+          if (res.rail) {
+            const rdef = DEVICE_DEFS[res.rail.type];
+            if (rdef.acceptBox(res.rail, w - next)) { boxes.splice(i, 1); continue; }
+            next = Math.min(next, zoneEnd);
+          } else if (res.blocked) {
+            next = Math.min(next, zoneEnd);
+          } else if (boxes.length === 1 && !hasUpstream(dev, w, h)) {
+            next = 0; // самостоятельный конвейер без входа сверху — демо-цикл, как раньше
+          } else {
+            boxes.splice(i, 1); continue; // конец линии (или конвейер, питаемый сверху) — коробка уезжает со сцены
+          }
+        }
+        boxes[i] = next;
+      }
+
+      IO[sensorKey] = boxes.some(bx => bx + boxW >= zoneStart && bx <= zoneEnd + 18);
+
+      // «голова» линии (в неё ничего не стыкуется) сама поддерживает одну деталь на ленте
+      if (boxes.length === 0 && !hasUpstream(dev, w, h)) boxes.push(0);
 
       const angle = dev.state.dir * Math.PI / 2;
-      const fp = DEVICE_DEFS.conveyor.footprint(dev);
-      const center = { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
-      const exitOffset = rotatePoint({ x: w / 2, y: 0 }, angle);
-      const exitPoint = { x: center.x + exitOffset.x, y: center.y + exitOffset.y };
-
-      const blocked = isBlockedNear(exitPoint, dev);
-      const atGate = bx + boxW >= zoneEnd;
-      const canMove = !!IO[motorKey] && !(atGate && blocked);
-      if (canMove) bx += 42 * dt;
-      if (bx > w + boxW * 2) bx = 0;
-      if (blocked) bx = Math.min(bx, zoneEnd);
-      dev.state.boxX = bx;
-
-      const boxOffset = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
-      boxPositions.push({ x: center.x + boxOffset.x, y: center.y + boxOffset.y });
+      const center = railCenter(dev, w, h);
+      for (const bx of boxes) {
+        const off = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+        boxPositions.push({ x: center.x + off.x, y: center.y + off.y });
+      }
     },
     draw(ctx, dev) {
       const { w, h } = DEVICE_DEFS.conveyor;
       const angle = dev.state.dir * Math.PI / 2;
-      const fp = DEVICE_DEFS.conveyor.footprint(dev);
-      const center = { x: dev.x + fp.w / 2, y: dev.y + fp.h / 2 };
+      const center = railCenter(dev, w, h);
 
       ctx.save();
       ctx.translate(center.x, center.y);
@@ -587,15 +641,97 @@ const DEVICE_DEFS = {
       ctx.fillStyle = sensorOn ? 'rgba(79,209,197,0.28)' : 'rgba(79,209,197,0.10)';
       ctx.fillRect(-w / 2 + zoneStart, -h / 2 - 4, zoneEnd - zoneStart + 14, h + 8);
       const boxW = 24;
-      ctx.fillStyle = '#f0b429';
-      ctx.fillRect(-w / 2 + dev.state.boxX, -12, boxW, 24);
-      ctx.strokeStyle = '#8a5a00';
-      ctx.strokeRect(-w / 2 + dev.state.boxX, -12, boxW, 24);
+      for (const bx of dev.state.boxes) {
+        ctx.fillStyle = '#f0b429';
+        ctx.fillRect(-w / 2 + bx, -12, boxW, 24);
+        ctx.strokeStyle = '#8a5a00';
+        ctx.strokeRect(-w / 2 + bx, -12, boxW, 24);
+      }
       ctx.fillStyle = motorOn ? '#4caf50' : '#8a94a6';
       ctx.beginPath(); ctx.arc(-w / 2 - 8, 0, 6, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
 
       // подпись — всегда прямая, вне трансформации поворота
+      label(ctx, dev.id, dev.x, dev.y - 6);
+    }
+  },
+
+  diverter: {
+    label: 'Дивертор', emoji: '↗️', idPrefix: 'Diverter', w: 70, h: 40, rotatable: true,
+    hint: 'Стыкуется с конвейерами как обычный рельсовый прибор (см. подсказку конвейера). Пока тег _Divert выключен — коробка едет прямо; включён — уходит вбок (по часовой стрелке от направления хода).',
+    tags(id) { return [{key:`${id}_Divert`, dir:'OUT'}]; },
+    makeState() { return { boxes: [], dir: 0 }; },
+    footprint(dev) { return railFootprint(DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h, dev.state.dir); },
+    rotate(dev) { dev.state.dir = (dev.state.dir + 1) % 4; },
+    // оба возможных выхода — нужны, чтобы соседний конвейер мог найти дивертор
+    // как «выше по потоку» независимо от текущего положения тега _Divert
+    exitPoints(dev) {
+      const { w, h } = DEVICE_DEFS.diverter;
+      return [railExitPoint(dev, w, h), sideExitPoint(dev, w, h)];
+    },
+    acceptBox(dev, overflow) {
+      if (dev.state.boxes.length > 0) return false;
+      dev.state.boxes.push(Math.max(0, overflow || 0));
+      return true;
+    },
+    physics(dev, dt, boxPositions) {
+      const w = DEVICE_DEFS.diverter.w, h = DEVICE_DEFS.diverter.h, boxW = 24, speed = 42;
+      const boxes = dev.state.boxes;
+      const divert = !!IO[`${dev.id}_Divert`];
+
+      for (let i = boxes.length - 1; i >= 0; i--) {
+        let next = boxes[i] + speed * dt;
+        if (next + boxW > w) {
+          const exit = divert ? sideExitPoint(dev, w, h) : railExitPoint(dev, w, h);
+          const res = resolveExit(exit, dev);
+          if (res.rail) {
+            const rdef = DEVICE_DEFS[res.rail.type];
+            if (rdef.acceptBox(res.rail, w - next)) { boxes.splice(i, 1); continue; }
+            next = w - boxW;
+          } else if (res.blocked) {
+            next = w - boxW;
+          } else {
+            boxes.splice(i, 1); continue; // некуда — коробка уезжает со сцены
+          }
+        }
+        boxes[i] = next;
+      }
+
+      const angle = dev.state.dir * Math.PI / 2;
+      const center = railCenter(dev, w, h);
+      for (const bx of boxes) {
+        const off = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+        boxPositions.push({ x: center.x + off.x, y: center.y + off.y });
+      }
+    },
+    draw(ctx, dev) {
+      const { w, h } = DEVICE_DEFS.diverter;
+      const angle = dev.state.dir * Math.PI / 2;
+      const center = railCenter(dev, w, h);
+      const divert = !!IO[`${dev.id}_Divert`];
+
+      ctx.save();
+      ctx.translate(center.x, center.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#1c2430';
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.strokeStyle = divert ? '#f0b429' : '#39465a'; ctx.lineWidth = 2;
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      const boxW = 24;
+      for (const bx of dev.state.boxes) {
+        ctx.fillStyle = '#f0b429';
+        ctx.fillRect(-w / 2 + bx, -12, boxW, 24);
+        ctx.strokeStyle = '#8a5a00';
+        ctx.strokeRect(-w / 2 + bx, -12, boxW, 24);
+      }
+      ctx.strokeStyle = divert ? '#ffcc33' : '#5a6576';
+      ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath();
+      if (divert) { ctx.moveTo(-10, 0); ctx.lineTo(6, 0); ctx.lineTo(6, h / 2 - 6); }
+      else { ctx.moveTo(-10, 0); ctx.lineTo(w / 2 - 8, 0); }
+      ctx.stroke();
+      ctx.restore();
+
       label(ctx, dev.id, dev.x, dev.y - 6);
     }
   },
@@ -828,17 +964,55 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function isBlockedNear(point, excludeDev) {
+// куда девается коробка с точки выхода рельсового прибора (конвейер/дивертор):
+// заблокировано закрытым шлагбаумом/дверью рядом, передаётся на другой рельсовый
+// прибор, у которого рядом вход с тем же направлением хода, или открытый конец —
+// это и есть та самая «гибкая стыковка», вместо старой проверки только по
+// близости к воротам (см. git history: старый isBlockedNear)
+function resolveExit(exitPoint, excludeDev) {
   for (const d of world.devices) {
     if (d === excludeDev) continue;
     if (d.type !== 'gate' && d.type !== 'door') continue;
     const def = DEVICE_DEFS[d.type];
     const center = { x: d.x + def.w / 2, y: d.y + def.h / 2 };
-    if (Math.hypot(center.x - point.x, center.y - point.y) < 55) {
-      if (!IO[`${d.id}_Open`]) return true;
+    if (Math.hypot(center.x - exitPoint.x, center.y - exitPoint.y) < 55) {
+      if (!IO[`${d.id}_Open`]) return { blocked: true };
+    }
+  }
+  for (const d of world.devices) {
+    if (d === excludeDev || !RAIL_TYPES.includes(d.type)) continue;
+    const def = DEVICE_DEFS[d.type];
+    const entry = railEntryPoint(d, def.w, def.h);
+    if (Math.abs(angleDiff(entry.angle, exitPoint.angle)) < 0.15 &&
+        Math.hypot(entry.x - exitPoint.x, entry.y - exitPoint.y) < 22) {
+      return { rail: d };
+    }
+  }
+  return { open: true };
+}
+
+// есть ли у прибора «поставщик» — другой рельсовый прибор, чей выход стыкуется
+// с входом этого. Используется только для решения, должен ли конвейер сам
+// поддерживать одну деталь на ленте (см. conveyor.physics)
+function hasUpstream(dev, w, h) {
+  const entry = railEntryPoint(dev, w, h);
+  for (const d of world.devices) {
+    if (d === dev || !RAIL_TYPES.includes(d.type)) continue;
+    const def = DEVICE_DEFS[d.type];
+    const exits = def.exitPoints ? def.exitPoints(d) : [railExitPoint(d, def.w, def.h)];
+    for (const exit of exits) {
+      if (Math.abs(angleDiff(exit.angle, entry.angle)) < 0.15 &&
+          Math.hypot(exit.x - entry.x, exit.y - entry.y) < 22) return true;
     }
   }
   return false;
+}
+
+function angleDiff(a, b) {
+  let d = (a - b) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
 }
 
 function deviceRect(dev) {
@@ -1294,7 +1468,7 @@ document.getElementById('btnClearAll').addEventListener('click', (e) => {
 
 // сериализация приборов: помимо позиции сохраняем настраиваемые поля
 // состояния (сейчас только dir у поворачиваемых приборов) — не всё
-// dev.state целиком, чтобы не тащить физику (boxX, spin и т.п.)
+// dev.state целиком, чтобы не тащить физику (boxes, spin и т.п.)
 function serializeDevice(d) {
   const out = { id: d.id, type: d.type, x: d.x, y: d.y };
   if (DEVICE_DEFS[d.type].rotatable) out.dir = d.state.dir;
@@ -1632,8 +1806,8 @@ let lastFrame = null;
 
 function stepPhysics(dt) {
   const boxPositions = [];
-  for (const dev of world.devices) if (dev.type === 'conveyor') DEVICE_DEFS.conveyor.physics(dev, dt, boxPositions);
-  for (const dev of world.devices) if (dev.type !== 'conveyor') DEVICE_DEFS[dev.type].physics(dev, dt, boxPositions);
+  for (const dev of world.devices) if (RAIL_TYPES.includes(dev.type)) DEVICE_DEFS[dev.type].physics(dev, dt, boxPositions);
+  for (const dev of world.devices) if (!RAIL_TYPES.includes(dev.type)) DEVICE_DEFS[dev.type].physics(dev, dt, boxPositions);
   updateSirenSound();
 }
 
