@@ -67,7 +67,7 @@
   }
 
   canvas {
-    width: 100%; height: auto; aspect-ratio: 800 / 340;
+    width: 100%; height: auto; aspect-ratio: 800 / 470;
     background: var(--panel2);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -249,7 +249,7 @@
     </div>
 
     <h2 style="margin-top:4px">Схема линии</h2>
-    <canvas id="scene" width="800" height="340"></canvas>
+    <canvas id="scene" width="800" height="470"></canvas>
 
     <div class="controls">
       <button id="btnRun" class="primary">▶ Компилировать и запустить</button>
@@ -514,11 +514,94 @@ let counters = {};
 let ast = null;
 let scanTimerHandle = null;
 
+// CANVAS_W/CANVAS_H — это МИРОВОЕ пространство (в нём живут физика, hit-тесты,
+// координаты приборов в TASKS и в сохранённых сценах) — их менять нельзя,
+// иначе разъедутся все существующие задания. Экранные пиксели (SCREEN_W/H) —
+// отдельная величина, это уже проекция мира на канвас (см. изометрию ниже).
 const CANVAS_W = 800, CANVAS_H = 340;
 const GRID = 10;
 function snap(v) { return Math.round(v / GRID) * GRID; }
 
 function makeBlink(period) { return Math.floor(performance.now() / period) % 2 === 0; }
+
+/* ======================================================================
+   ИЗОМЕТРИЯ: мир остаётся плоским 2D (физика, hit-тесты, TASKS, сохранённые
+   сцены — всё в координатах CANVAS_W×CANVAS_H, как раньше), а в псевдо-3D
+   превращается только ОТРИСОВКА. worldToScreen — прямое преобразование для
+   рисования, screenToWorld — обратное, для кликов мыши (см. canvasPoint).
+   Классическая «2:1» проекция (как в RollerCoaster Tycoon/Prison Architect):
+   вправо по миру → вправо-вниз на экране, вниз по миру → влево-вниз.
+   ====================================================================== */
+const ISO_SCALE = 0.7;
+const ISO_MARGIN_TOP = 70; // запас сверху под "рост" приподнятых приборов
+const ISO_ORIGIN_X = CANVAS_H * ISO_SCALE;
+const ISO_ORIGIN_Y = ISO_MARGIN_TOP;
+const SCREEN_W = Math.round((CANVAS_W + CANVAS_H) * ISO_SCALE);
+const SCREEN_H = Math.round((CANVAS_W + CANVAS_H) * ISO_SCALE * 0.5) + ISO_MARGIN_TOP;
+
+function worldToScreen(wx, wy) {
+  return {
+    x: (wx - wy) * ISO_SCALE + ISO_ORIGIN_X,
+    y: (wx + wy) * ISO_SCALE * 0.5 + ISO_ORIGIN_Y,
+  };
+}
+function screenToWorld(sx, sy) {
+  const a = (sx - ISO_ORIGIN_X) / ISO_SCALE;       // wx - wy
+  const b = (sy - ISO_ORIGIN_Y) / (ISO_SCALE * 0.5); // wx + wy
+  return { x: (a + b) / 2, y: (b - a) / 2 };
+}
+
+function isoPoly(pts, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+}
+
+// «коробка» в изометрии: прямоугольный след (wx,wy,w,h) в мировых координатах,
+// приподнятый на elevation экранных пикселей — три видимые грани (левая,
+// правая, крыша). Большинство приборов — это просто такая коробка плюс
+// декоративная деталь на крыше (лампочка, индикатор и т.п.).
+function drawIsoBox(wx, wy, w, h, elevation, colors, baseLift) {
+  baseLift = baseLift || 0; // на сколько экранных px приподнята сама подошва коробки
+  // (нужно, чтобы ставить предметы НА крышу другого прибора — например, коробку на ленту)
+  const p0 = worldToScreen(wx, wy), p1 = worldToScreen(wx + w, wy);
+  const p2 = worldToScreen(wx + w, wy + h), p3 = worldToScreen(wx, wy + h);
+  const lift = (p, amount) => ({ x: p.x, y: p.y - amount });
+  const b0 = lift(p0, baseLift), b1 = lift(p1, baseLift), b2 = lift(p2, baseLift), b3 = lift(p3, baseLift);
+  const r0 = lift(p0, baseLift + elevation), r1 = lift(p1, baseLift + elevation);
+  const r2 = lift(p2, baseLift + elevation), r3 = lift(p3, baseLift + elevation);
+  isoPoly([b3, b2, r2, r3], colors.left, colors.edge);
+  isoPoly([b1, b2, r2, r1], colors.right, colors.edge);
+  isoPoly([r0, r1, r2, r3], colors.top, colors.edge);
+  return { p0: b0, p1: b1, p2: b2, p3: b3, r0, r1, r2, r3, roofCenter: { x: (r0.x + r2.x) / 2, y: (r0.y + r2.y) / 2 } };
+}
+
+// та же коробка, но повёрнутая вокруг своего центра на произвольный угол —
+// нужна для деталей конвейера/дивертора, которые обязаны совпадать с
+// направлением ленты (0/90/180/270°), а не только с осями мира
+function drawIsoRotatedQuad(cx, cy, localCorners, angle, elevation, fill, stroke) {
+  const pts = localCorners.map((lc) => {
+    const off = rotatePoint(lc, angle);
+    const s = worldToScreen(cx + off.x, cy + off.y);
+    return { x: s.x, y: s.y - elevation };
+  });
+  isoPoly(pts, fill, stroke);
+}
+
+// круглые индикаторы (лампочки, кнопки, кольцо датчика) в проекции — эллипс
+// с той же вертикальной компрессией, что и у самой проекции. Не идеально
+// точная изометрическая окружность (та была бы повёрнутым эллипсом), но для
+// маленьких декоративных кружков разница на глаз не видна, а считать проще.
+function drawIsoEllipse(wx, wy, r, elevation, fill, stroke) {
+  const p = worldToScreen(wx, wy);
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y - elevation, r * ISO_SCALE, r * ISO_SCALE * 0.5, 0, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+}
 
 // поворот вращаемых приборов (конвейер, дивертор): 0=вправо,1=вниз,2=влево,3=вверх
 function rotatePoint(local, angle) {
@@ -618,40 +701,42 @@ const DEVICE_DEFS = {
       }
     },
     draw(ctx, dev) {
+      const BELT_H = 14; // высота ленты над землёй, в экранных px
       const { w, h } = DEVICE_DEFS.conveyor;
+      const fp = DEVICE_DEFS.conveyor.footprint(dev);
       const angle = dev.state.dir * Math.PI / 2;
       const center = railCenter(dev, w, h);
-
-      ctx.save();
-      ctx.translate(center.x, center.y);
-      ctx.rotate(angle);
-      // дальше рисуем в локальных координатах конвейера (0,0) = центр, ось X = направление движения
-      ctx.fillStyle = '#161c24';
-      ctx.fillRect(-w / 2, -h / 2, w, h);
-      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2;
-      ctx.strokeRect(-w / 2, -h / 2, w, h);
       const motorOn = !!IO[`${dev.id}_Motor`];
-      ctx.strokeStyle = '#2c3644'; ctx.lineWidth = 1;
-      const tick = motorOn ? (performance.now() / 40) % 20 : 0;
-      for (let tx = -w / 2 - tick; tx < w / 2 + 20; tx += 20) {
-        ctx.beginPath(); ctx.moveTo(tx, -h / 2); ctx.lineTo(tx, h / 2); ctx.stroke();
-      }
-      const zoneStart = w - 70, zoneEnd = w - 14;
       const sensorOn = !!IO[`${dev.id}_Sensor`];
-      ctx.fillStyle = sensorOn ? 'rgba(79,209,197,0.28)' : 'rgba(79,209,197,0.10)';
-      ctx.fillRect(-w / 2 + zoneStart, -h / 2 - 4, zoneEnd - zoneStart + 14, h + 8);
+
+      drawIsoBox(dev.x, dev.y, fp.w, fp.h, BELT_H, {
+        top: '#232c3a', left: '#10141b', right: '#191f29', edge: '#39465a',
+      });
+
+      // зона датчика — подсвеченный участок у выхода ленты; углы считаем в
+      // локальных координатах конвейера (0,0)=центр, ось X=направление хода)
+      // и поворачиваем на угол ленты, как раньше делал ctx.rotate()
+      const zoneStart = w - 70, zoneEnd = w - 14;
+      const zoneLocal = [
+        { x: zoneStart - w / 2, y: -h / 2 - 4 }, { x: zoneEnd + 14 - w / 2, y: -h / 2 - 4 },
+        { x: zoneEnd + 14 - w / 2, y: h / 2 + 4 }, { x: zoneStart - w / 2, y: h / 2 + 4 },
+      ];
+      drawIsoRotatedQuad(center.x, center.y, zoneLocal, angle, BELT_H,
+        sensorOn ? 'rgba(79,209,197,0.30)' : 'rgba(79,209,197,0.10)', null);
+
+      // стрелка направления хода на крыше ленты
+      const arrowLocal = [{ x: w / 2 - 34, y: -6 }, { x: w / 2 - 14, y: 0 }, { x: w / 2 - 34, y: 6 }];
+      drawIsoRotatedQuad(center.x, center.y, arrowLocal, angle, BELT_H + 1,
+        motorOn ? '#4caf50' : '#5a6576', null);
+
       const boxW = 24;
       for (const bx of dev.state.boxes) {
-        ctx.fillStyle = '#f0b429';
-        ctx.fillRect(-w / 2 + bx, -12, boxW, 24);
-        ctx.strokeStyle = '#8a5a00';
-        ctx.strokeRect(-w / 2 + bx, -12, boxW, 24);
+        const off = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+        drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
+          top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
+        }, BELT_H);
       }
-      ctx.fillStyle = motorOn ? '#4caf50' : '#8a94a6';
-      ctx.beginPath(); ctx.arc(-w / 2 - 8, 0, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
 
-      // подпись — всегда прямая, вне трансформации поворота
       label(ctx, dev.id, dev.x, dev.y - 6);
     }
   },
@@ -705,32 +790,41 @@ const DEVICE_DEFS = {
       }
     },
     draw(ctx, dev) {
+      const BELT_H = 14;
       const { w, h } = DEVICE_DEFS.diverter;
+      const fp = DEVICE_DEFS.diverter.footprint(dev);
       const angle = dev.state.dir * Math.PI / 2;
       const center = railCenter(dev, w, h);
       const divert = !!IO[`${dev.id}_Divert`];
 
-      ctx.save();
-      ctx.translate(center.x, center.y);
-      ctx.rotate(angle);
-      ctx.fillStyle = '#1c2430';
-      ctx.fillRect(-w / 2, -h / 2, w, h);
-      ctx.strokeStyle = divert ? '#f0b429' : '#39465a'; ctx.lineWidth = 2;
-      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      drawIsoBox(dev.x, dev.y, fp.w, fp.h, BELT_H, {
+        top: divert ? '#3a3016' : '#1c2430', left: '#10141b', right: '#191f29',
+        edge: divert ? '#f0b429' : '#39465a',
+      });
+
       const boxW = 24;
       for (const bx of dev.state.boxes) {
-        ctx.fillStyle = '#f0b429';
-        ctx.fillRect(-w / 2 + bx, -12, boxW, 24);
-        ctx.strokeStyle = '#8a5a00';
-        ctx.strokeRect(-w / 2 + bx, -12, boxW, 24);
+        const off = rotatePoint({ x: -w / 2 + bx + boxW / 2, y: 0 }, angle);
+        drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
+          top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
+        }, BELT_H);
       }
+
+      // стрелка маршрута на крыше: прямо или вбок, в зависимости от _Divert
+      const arrowLocal = divert
+        ? [{ x: -10, y: 0 }, { x: 6, y: 0 }, { x: 6, y: h / 2 - 6 }]
+        : [{ x: -10, y: 0 }, { x: w / 2 - 8, y: 0 }];
+      const pts = arrowLocal.map((lc) => {
+        const off = rotatePoint(lc, angle);
+        const s = worldToScreen(center.x + off.x, center.y + off.y);
+        return { x: s.x, y: s.y - BELT_H - 1 };
+      });
       ctx.strokeStyle = divert ? '#ffcc33' : '#5a6576';
       ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath();
-      if (divert) { ctx.moveTo(-10, 0); ctx.lineTo(6, 0); ctx.lineTo(6, h / 2 - 6); }
-      else { ctx.moveTo(-10, 0); ctx.lineTo(w / 2 - 8, 0); }
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.stroke();
-      ctx.restore();
 
       label(ctx, dev.id, dev.x, dev.y - 6);
     }
@@ -745,15 +839,22 @@ const DEVICE_DEFS = {
       dev.state.angle += (target - dev.state.angle) * Math.min(1, dt * 6);
     },
     draw(ctx, dev) {
-      const pivotX = dev.x + 16, pivotY = dev.y + 70;
-      const armLen = 60;
+      const groundWx = dev.x + 16, groundWy = dev.y + 70;
+      const poleH = 40, armLen = 60;
       const rad = dev.state.angle * Math.PI / 180;
+      const base = worldToScreen(groundWx, groundWy);
+      const pivotX = base.x, pivotY = base.y - poleH;
+      // рычаг качается в вертикальной плоскости (не по земле), поэтому его
+      // смещение — обычная 2D-тригонометрия прямо в экранных пикселях, без
+      // изометрического перекоса, как и было
       const armX = pivotX + Math.sin(rad) * armLen;
       const armY = pivotY - Math.cos(rad) * armLen;
       const open = !!IO[`${dev.id}_Open`];
-      ctx.fillStyle = '#3a4556';
-      ctx.fillRect(pivotX - 5, pivotY, 10, 20);
-      ctx.beginPath(); ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2); ctx.fill();
+
+      drawIsoBox(groundWx - 5, groundWy - 5, 10, 10, poleH, {
+        top: '#3a4556', left: '#22282f', right: '#2d343d', edge: '#12161c',
+      });
+
       ctx.strokeStyle = open ? '#4caf50' : '#ef5757';
       ctx.lineWidth = 6; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(pivotX, pivotY); ctx.lineTo(armX, armY); ctx.stroke();
@@ -774,12 +875,20 @@ const DEVICE_DEFS = {
     },
     draw(ctx, dev) {
       const { w, h } = DEVICE_DEFS.door;
-      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 3;
-      ctx.strokeRect(dev.x, dev.y, w, h);
-      const panelH = h * (1 - dev.state.openFrac);
       const open = !!IO[`${dev.id}_Open`];
-      ctx.fillStyle = open ? '#2e6b48' : '#6b2e2e';
-      ctx.fillRect(dev.x + 3, dev.y + (h - panelH), w - 6, panelH - 3);
+      const maxElevation = 50;
+      const panelElevation = maxElevation * (1 - dev.state.openFrac);
+      // порог/рама всегда видны, панель «уезжает вверх» при открытии — то же
+      // ощущение, что и у прежней вертикальной шторки, только в изометрии
+      drawIsoBox(dev.x, dev.y, w, h, 4, {
+        top: '#232c3a', left: '#181e27', right: '#1e252f', edge: '#39465a',
+      });
+      if (panelElevation > 1) {
+        drawIsoBox(dev.x, dev.y, w, h, panelElevation, {
+          top: open ? '#3a8a5f' : '#8a3a3a', left: open ? '#1e4d34' : '#4d1e1e',
+          right: open ? '#2a6b48' : '#6b2a2a', edge: '#12161c',
+        }, 4);
+      }
       label(ctx, dev.id, dev.x - 6, dev.y - 6);
     }
   },
@@ -799,14 +908,12 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const cx = dev.x + 12, cy = dev.y + 12;
       const on = !!IO[dev.id];
-      ctx.fillStyle = on ? 'rgba(79,209,197,0.25)' : 'rgba(79,209,197,0.08)';
-      ctx.beginPath(); ctx.arc(cx, cy, DEVICE_DEFS.sensor.radius, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#4fd1c5'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(cx, cy, DEVICE_DEFS.sensor.radius, 0, Math.PI * 2); ctx.stroke();
+      const r = DEVICE_DEFS.sensor.radius;
+      drawIsoEllipse(cx, cy, r, 0, on ? 'rgba(79,209,197,0.25)' : 'rgba(79,209,197,0.08)', null);
+      ctx.setLineDash([4, 3]);
+      drawIsoEllipse(cx, cy, r, 0, null, '#4fd1c5');
       ctx.setLineDash([]);
-      ctx.fillStyle = on ? '#4fd1c5' : '#3a4556';
-      ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#12161c'; ctx.lineWidth = 2; ctx.stroke();
+      drawIsoEllipse(cx, cy, 9, 6, on ? '#4fd1c5' : '#3a4556', '#12161c');
       label(ctx, dev.id, dev.x - 6, dev.y - 8);
     }
   },
@@ -819,9 +926,10 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const cx = dev.x + 20, cy = dev.y + 20;
       const on = !!IO[dev.id];
-      ctx.fillStyle = on ? '#4caf50' : '#1c4d34';
-      ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#2e6b48'; ctx.lineWidth = 3; ctx.stroke();
+      drawIsoBox(dev.x + 3, dev.y + 3, 34, 34, 10, {
+        top: '#12161c', left: '#0a0d11', right: '#0e1216', edge: '#000',
+      });
+      drawIsoEllipse(cx, cy, 15, on ? 8 : 12, on ? '#4caf50' : '#1c4d34', '#2e6b48');
       label(ctx, dev.id, dev.x - 6, dev.y - 6);
     }
   },
@@ -833,10 +941,11 @@ const DEVICE_DEFS = {
     physics() {},
     draw(ctx, dev) {
       const on = !!IO[dev.id];
-      ctx.fillStyle = '#161c24'; ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2;
-      roundRect(ctx, dev.x, dev.y + 10, 40, 20, 10); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = on ? '#4caf50' : '#8a94a6';
-      ctx.beginPath(); ctx.arc(on ? dev.x + 30 : dev.x + 10, dev.y + 20, 8, 0, Math.PI * 2); ctx.fill();
+      drawIsoBox(dev.x, dev.y + 10, 40, 20, 10, {
+        top: '#232c3a', left: '#12161e', right: '#1a212c', edge: '#39465a',
+      });
+      const knobWx = on ? dev.x + 30 : dev.x + 10, knobWy = dev.y + 20;
+      drawIsoEllipse(knobWx, knobWy, 8, 12, on ? '#4caf50' : '#8a94a6', '#12161c');
       label(ctx, dev.id, dev.x - 6, dev.y - 4);
     }
   },
@@ -849,10 +958,10 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const cx = dev.x + 14, cy = dev.y + 14;
       const on = !!IO[dev.id];
-      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2);
-      ctx.fillStyle = on ? '#ffcc33' : '#3a4556';
-      ctx.fill();
-      ctx.strokeStyle = '#12161c'; ctx.lineWidth = 2; ctx.stroke();
+      drawIsoBox(dev.x + 6, dev.y + 6, 16, 16, 6, {
+        top: '#232c3a', left: '#12161e', right: '#1a212c', edge: '#39465a',
+      });
+      drawIsoEllipse(cx, cy, 12, 14, on ? '#ffcc33' : '#3a4556', '#12161c');
       label(ctx, dev.id, dev.x - 6, dev.y - 4);
     }
   },
@@ -865,15 +974,17 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const cx = dev.x + 18, cy = dev.y + 18;
       const on = !!IO[dev.id];
-      ctx.fillStyle = on ? '#1c4d34' : '#212936';
-      ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = on ? '#4caf50' : '#39465a'; ctx.lineWidth = 2; ctx.stroke();
+      const base = worldToScreen(cx, cy);
+      drawIsoEllipse(cx, cy, 16, 14, on ? '#1c4d34' : '#212936', on ? '#4caf50' : '#39465a');
+      const topY = base.y - 14;
+      // лопасти — тоже прямая 2D-геометрия в экранных пикселях (тот же приём,
+      // что и у рычага шлагбаума): вращение вокруг вертикальной оси мотора
       ctx.strokeStyle = on ? '#9dff9d' : '#5a6576'; ctx.lineWidth = 2;
       for (let a = 0; a < 3; a++) {
         const ang = dev.state.spin + a * (Math.PI * 2 / 3);
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(ang) * 12, cy + Math.sin(ang) * 12);
+        ctx.moveTo(base.x, topY);
+        ctx.lineTo(base.x + Math.cos(ang) * 12, topY + Math.sin(ang) * 12 * 0.5);
         ctx.stroke();
       }
       label(ctx, dev.id, dev.x - 6, dev.y - 4);
@@ -889,10 +1000,7 @@ const DEVICE_DEFS = {
       const cx = dev.x + 16, cy = dev.y + 16;
       const on = !!IO[dev.id];
       const blink = on && makeBlink(280);
-      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-      ctx.fillStyle = on ? (blink ? '#ff4d4d' : '#7a1a1a') : '#3a4556';
-      ctx.fill();
-      ctx.strokeStyle = '#12161c'; ctx.lineWidth = 2; ctx.stroke();
+      drawIsoEllipse(cx, cy, 14, 16, on ? (blink ? '#ff4d4d' : '#7a1a1a') : '#3a4556', '#12161c');
       label(ctx, dev.id, dev.x - 6, dev.y - 4);
     }
   },
@@ -904,22 +1012,16 @@ const DEVICE_DEFS = {
     physics() {},
     draw(ctx, dev) {
       const { w, h } = DEVICE_DEFS.trafficlight;
-      ctx.fillStyle = '#161c24';
-      roundRect(ctx, dev.x, dev.y, w, h, 8);
-      ctx.fill();
-      ctx.strokeStyle = '#39465a'; ctx.lineWidth = 2; ctx.stroke();
-      const colors = [
-        { key: `${dev.id}_Red`, on: '#ff4d4d', off: '#4a2222' },
-        { key: `${dev.id}_Yellow`, on: '#ffcc33', off: '#4a3f1a' },
-        { key: `${dev.id}_Green`, on: '#4caf50', off: '#204b26' },
-      ];
-      colors.forEach((c, i) => {
-        const cy = dev.y + 16 + i * 23;
-        ctx.beginPath(); ctx.arc(dev.x + w / 2, cy, 9, 0, Math.PI * 2);
-        ctx.fillStyle = IO[c.key] ? c.on : c.off;
-        ctx.fill();
-        ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 1.5; ctx.stroke();
+      const cx = dev.x + w / 2, cy = dev.y + h / 2;
+      drawIsoBox(cx - 6, cy - 6, 12, 12, 60, {
+        top: '#232c3a', left: '#0e1217', right: '#161b22', edge: '#39465a',
       });
+      const colors = [
+        { key: `${dev.id}_Red`, on: '#ff4d4d', off: '#4a2222', el: 55 },
+        { key: `${dev.id}_Yellow`, on: '#ffcc33', off: '#4a3f1a', el: 40 },
+        { key: `${dev.id}_Green`, on: '#4caf50', off: '#204b26', el: 25 },
+      ];
+      colors.forEach((c) => { drawIsoEllipse(cx, cy, 8, c.el, IO[c.key] ? c.on : c.off, '#0d1117'); });
       label(ctx, dev.id, dev.x - 6, dev.y - 6);
     }
   },
@@ -933,26 +1035,21 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const cx = dev.x + 20, cy = dev.y + 20;
       const safe = !!IO[dev.id];
-      ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-      ctx.fillStyle = '#2a2a2a';
-      ctx.fill();
-      ctx.strokeStyle = '#0d1117'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx, cy, safe ? 14 : 11, 0, Math.PI * 2);
-      ctx.fillStyle = safe ? '#ef5757' : '#7a1a1a';
-      ctx.fill();
-      if (!safe) {
-        ctx.strokeStyle = '#ffcc33'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.stroke();
-      }
+      drawIsoEllipse(cx, cy, 18, 10, '#2a2a2a', '#0d1117');
+      drawIsoEllipse(cx, cy, safe ? 14 : 11, 12, safe ? '#ef5757' : '#7a1a1a', null);
+      if (!safe) drawIsoEllipse(cx, cy, 16, 12, null, '#ffcc33');
       label(ctx, dev.id, dev.x - 6, dev.y - 6);
     }
   },
 };
 
-function label(ctx, text, x, y) {
+// x,y — мировые координаты (как и всё в DEVICE_DEFS); проекцию на экран
+// делает сама функция, чтобы не дублировать worldToScreen в каждом draw()
+function label(ctx, text, wx, wy) {
+  const p = worldToScreen(wx, wy);
   ctx.fillStyle = '#8a94a6';
   ctx.font = '10.5px monospace';
-  ctx.fillText(text, x, y < 10 ? 10 : y);
+  ctx.fillText(text, p.x, p.y < 10 ? 10 : p.y);
 }
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -1535,14 +1632,16 @@ document.getElementById('btnImportApply').addEventListener('click', () => {
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d');
 
+// возвращает МИРОВЫЕ координаты клика — вся физика/hit-тесты/размещение
+// приборов работают в мировом пространстве (см. комментарий у CANVAS_W),
+// поэтому экранная точка сразу проходит через screenToWorld
 function canvasPoint(evt) {
   const rect = canvas.getBoundingClientRect();
   const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
   const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
-  return {
-    x: (clientX - rect.left) * (canvas.width / rect.width),
-    y: (clientY - rect.top) * (canvas.height / rect.height),
-  };
+  const screenX = (clientX - rect.left) * (canvas.width / rect.width);
+  const screenY = (clientY - rect.top) * (canvas.height / rect.height);
+  return screenToWorld(screenX, screenY);
 }
 
 function topDeviceAt(x, y) {
@@ -1864,21 +1963,34 @@ function stepPhysics(dt) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
-  for (let x = 0; x < CANVAS_W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CANVAS_H); ctx.stroke(); }
-  for (let y = 0; y < CANVAS_H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CANVAS_W,y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let x = 0; x <= CANVAS_W; x += 40) {
+    const a = worldToScreen(x, 0), b = worldToScreen(x, CANVAS_H);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  for (let y = 0; y <= CANVAS_H; y += 40) {
+    const a = worldToScreen(0, y), b = worldToScreen(CANVAS_W, y);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
 }
 
 function draw() {
-  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-  ctx.fillStyle = '#212936'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
+  ctx.fillStyle = '#212936'; ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
   drawGrid();
-  for (const dev of world.devices) {
+  // рисуем от «дальних» к «ближним» (по мировой диагонали x+y) — приборы,
+  // что стоят южнее/восточнее на схеме, должны перекрывать те, что за ними
+  const ordered = [...world.devices].sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  for (const dev of ordered) {
     DEVICE_DEFS[dev.type].draw(ctx, dev);
     if (world.mode === 'sandbox' && world.editMode && dev.id === world.selectedId) {
       const r = deviceRect(dev);
-      ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
-      ctx.strokeRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8);
+      const pts = [
+        worldToScreen(r.x - 4, r.y - 4), worldToScreen(r.x + r.w + 4, r.y - 4),
+        worldToScreen(r.x + r.w + 4, r.y + r.h + 4), worldToScreen(r.x - 4, r.y + r.h + 4),
+      ];
+      ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      isoPoly(pts, null, '#4fd1c5');
       ctx.setLineDash([]);
     }
   }
