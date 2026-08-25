@@ -45,6 +45,64 @@ IndexedDB на устройстве, интернет не нужен.
 (`cp index.html plc-field-assistant/public/trainer/index.html` из корня
 репозитория), иначе вкладка «Тренажёр» останется на старой версии.
 
+Конвейеры стыкуются по-настоящему: `railExitPoint`/`railEntryPoint`/
+`resolveExit` в `index.html` находят соседний конвейер (или дивертор),
+чей вход геометрически совпадает с твоим выходом и смотрит в ту же
+сторону, и передают коробку на него — вместо старой проверки только
+близости к воротам. У конвейера теперь очередь коробок (`state.boxes`,
+не одна `boxX`), так что многосекционная линия несёт продукт непрерывно.
+Одиночный конвейер без входа сверху по-прежнему сам зацикливает одну
+деталь — для обратной совместимости с уже существующими заданиями.
+**Дивертор** (`DEVICE_DEFS.diverter`) — новый рельсовый прибор: стоит
+между конвейерами и по тегу `_Divert` уводит коробку либо прямо, либо
+на 90° в сторону.
+
+## Связь с CODESYS (OPC UA)
+
+Кнопка «⚙ CODESYS» на вкладке «Тренажёр» (видна только в
+Electron-сборке — браузер физически не может открыть OPC UA соединение)
+открывает панель `src/modules/codesys/CodesysPanel.tsx`: адрес OPC UA
+сервера CODESYS, таблица тегов сцены с полем NodeId у каждого и кнопка
+«Запустить синхронизацию». При старте синхронизации приложение
+останавливает встроенный ST-интерпретатор тренажёра (`pauseScan` —
+обёртка над уже существующим `stopScan()`) — дальше тегами управляет
+реальный CODESYS, а сцена (конвейеры, датчики, физика) продолжает жить
+своей жизнью независимо, как и раньше (`stepPhysics`/`draw` никогда не
+зависели от scan-таймера).
+
+Схема моста:
+
+- **`electron/opcuaBridge.js`** — тонкая обёртка над `node-opcua-client`
+  (единственная активная сессия), реально живёт только в main-процессе
+  Electron (raw TCP недоступен из renderer/iframe).
+- **`electron/preload.cjs`** — `contextBridge` прокидывает пять операций
+  (`connect/disconnect/status/read/write`) в `window.electronAPI.codesys`
+  у рендерера — и ничего больше (никакого `fs`/`net`/произвольных IPC).
+- **Тренажёр ↔ React** — `index.html` раз в 150мс шлёт снимок тегов
+  (`postMessage({source:'pfa-codesys-snapshot', ...})`) в родительское
+  окно; `useTrainerBridge.ts` его ловит. **postMessage, а не прямой
+  `iframe.contentWindow`** — под Electron внешняя страница и трейнер
+  это два разных `file://` документа (разное происхождение), прямой
+  доступ не гарантирован политикой same-origin.
+- **`CodesysPanel.tsx`** — раз в 250мс для тегов с проставленным NodeId:
+  OUT-теги (CODESYS управляет прибором — мотор, лампа, ворота) читает из
+  OPC UA и пишет в сцену; IN-теги (сцена сообщает состояние — датчик,
+  кнопка) читает из сцены и пишет в OPC UA. Синк-тик держит снимок/конфиг
+  в `useRef`, а не читает их из замыкания напрямую — иначе `setInterval`
+  захватывает их значения на момент старта синхронизации и не видит
+  ничего, что пришло позже (классический баг устаревшего замыкания,
+  отловлен и исправлен при разработке — см. git history).
+
+Проверено сквозным тестом против собственного mock OPC UA сервера
+(`node-opcua-server`, не входит в зависимости приложения — только для
+разработки): подключение к несуществующему серверу не роняет приложение
+и показывает ошибку; при подключении к рабочему серверу OUT-тег реально
+меняется от внешнего источника и это видно на сцене, а IN-тег с сцены
+реально долетает до сервера. Против настоящего CODESYS не тестировалось
+(нет установленного CODESYS в песочнице разработки) — нужно проверить на
+живом контроллере: включи в CODESYS-проекте OPC UA Server и пометь
+переменные, которые нужно связать с тренажёром, флагом `export`.
+
 ## Windows-приложение (Electron)
 
 ```bash
@@ -91,7 +149,8 @@ account).
 Vite + React + TypeScript + Tailwind CSS, Dexie.js (IndexedDB),
 react-router-dom (HashRouter — работает и под `file://` в Electron),
 fuse.js (поиск), papaparse (CSV), jsPDF (PDF), vite-plugin-pwa
-(офлайн-кэш для сайта/PWA), Electron + electron-builder (Windows `.exe`).
+(офлайн-кэш для сайта/PWA), Electron + electron-builder (Windows `.exe`),
+node-opcua-client (связь с CODESYS, только в main-процессе Electron).
 
 ## Разработка
 
@@ -193,7 +252,8 @@ src/
   lib/                    # search.ts (Fuse), csv.ts, pdf.ts — общие утилиты
   modules/
     trainer/                # вкладка «Тренажёр» — iframe на public/trainer/index.html
-    calculators/              # модуль 4
+    codesys/                  # панель связи с CODESYS по OPC UA (только Electron)
+    calculators/                # модуль 4
     faultlog/                   # модуль 1
     io-table/                     # модуль 2
     objects/                        # дерево объектов, общее для 3/5/6
@@ -209,6 +269,9 @@ scripts/
   verify-formulas.mjs                               # проверка калькуляторов
 tomes/                                                # исходные HTML-тома + style_v2.css
 public/trainer/                                         # копия корневого index.html (тренажёр)
-electron/main.js                                          # Electron main-процесс
+electron/
+  main.js                                                 # Electron main-процесс (+ IPC-ручки codesys:*)
+  preload.cjs                                               # contextBridge -> window.electronAPI.codesys
+  opcuaBridge.js                                              # обёртка над node-opcua-client
 build/icon.ico                                              # временная иконка Windows-приложения
 ```

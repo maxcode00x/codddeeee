@@ -1720,6 +1720,58 @@ function stopScan() {
 document.getElementById('scanRate').addEventListener('change', () => { if (scanTimerHandle) startScan(); });
 
 /* ======================================================================
+   МОСТ ДЛЯ ВНЕШНЕГО КОНТРОЛЛЕРА (например CODESYS через OPC UA) — см.
+   plc-field-assistant/src/modules/codesys/. Актуален только когда тренажёр
+   открыт внутри Electron-приложения; в обычном браузере просто не
+   используется. Сцена продолжает физику (конвейеры, датчики) как обычно —
+   stepPhysics/draw работают независимо от scanTimerHandle по архитектуре
+   приложения (см. CLAUDE.md), поэтому для реального внешнего ПЛК достаточно
+   остановить встроенный интерпретатор (pauseScan) и дальше синхронизировать
+   значения IO снаружи через getValue/setValue.
+   ====================================================================== */
+window.PLC_CODESYS_BRIDGE = {
+  listTags() {
+    return world.devices.flatMap(dev =>
+      DEVICE_DEFS[dev.type].tags(dev.id).map(t => ({
+        key: t.key, dir: t.dir, deviceId: dev.id, deviceType: dev.type, deviceLabel: DEVICE_DEFS[dev.type].label,
+      }))
+    );
+  },
+  getValue(key) { return !!IO[key]; },
+  setValue(key, val) { if (key in IO) IO[key] = !!val; },
+  getSnapshot() { return { ...IO }; },
+  pauseScan: () => stopScan(),
+  resumeScan: () => startScan(),
+  isScanRunning: () => !!scanTimerHandle,
+};
+
+// Тот же мост, но через postMessage — под Electron тренажёр и внешняя
+// панель CODESYS живут в разных file:// документах (разное происхождение),
+// поэтому прямой доступ к window.PLC_CODESYS_BRIDGE из родительского окна
+// не гарантирован политикой same-origin. postMessage работает всегда,
+// независимо от происхождения, так что это основной канал, а
+// window.PLC_CODESYS_BRIDGE выше — просто то же самое для случаев, когда
+// прямой доступ всё-таки доступен (обычный сайт/PWA, один origin).
+window.addEventListener('message', (ev) => {
+  const msg = ev.data;
+  if (!msg || msg.source !== 'pfa-codesys-cmd') return;
+  if (msg.type === 'pauseScan') PLC_CODESYS_BRIDGE.pauseScan();
+  else if (msg.type === 'resumeScan') PLC_CODESYS_BRIDGE.resumeScan();
+  else if (msg.type === 'setValues') {
+    for (const [k, v] of Object.entries(msg.values || {})) PLC_CODESYS_BRIDGE.setValue(k, v);
+  }
+});
+setInterval(() => {
+  if (!window.parent || window.parent === window) return;
+  window.parent.postMessage({
+    source: 'pfa-codesys-snapshot',
+    tags: PLC_CODESYS_BRIDGE.listTags(),
+    values: PLC_CODESYS_BRIDGE.getSnapshot(),
+    scanRunning: PLC_CODESYS_BRIDGE.isScanRunning(),
+  }, '*');
+}, 150);
+
+/* ======================================================================
    РЕДАКТОР: подсветка синтаксиса (оверлей textarea/pre)
    ====================================================================== */
 
