@@ -1193,19 +1193,25 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const { w, h } = DEVICE_DEFS.door;
       const open = !!IO[`${dev.id}_Open`];
-      const maxElevation = 50;
-      const panelElevation = maxElevation * (1 - dev.state.openFrac);
-      // порог/рама всегда видны, панель «уезжает вверх» при открытии — то же
-      // ощущение, что и у прежней вертикальной шторки, только в изометрии
+      const maxElevation = 50, minPanel = 10;
+      const frac = dev.state.openFrac;
+      // порог/рама всегда видны; полотно уезжает вверх при открытии, но
+      // никогда не схлопывается до нуля — у потолка всегда остаётся видимый
+      // «валик» съехавшей шторки, иначе дверь визуально пропадает совсем
+      const baseLift = maxElevation * frac;
+      const panelH = maxElevation * (1 - frac) + minPanel;
       drawIsoBox(dev.x, dev.y, w, h, 4, {
         top: '#232c3a', left: '#181e27', right: '#1e252f', edge: '#39465a',
       });
-      if (panelElevation > 1) {
-        drawIsoBox(dev.x, dev.y, w, h, panelElevation, {
-          top: open ? '#3a8a5f' : '#8a3a3a', left: open ? '#1e4d34' : '#4d1e1e',
-          right: open ? '#2a6b48' : '#6b2a2a', edge: '#12161c',
-        }, 4);
-      }
+      const panel = drawIsoBox(dev.x, dev.y, w, h, panelH, {
+        top: open ? '#3a8a5f' : '#8a3a3a', left: open ? '#1e4d34' : '#4d1e1e',
+        right: open ? '#2a6b48' : '#6b2a2a', edge: '#12161c',
+      }, baseLift);
+      // шов между створками — чтобы силуэт однозначно читался как дверь
+      const midBottom = { x: (panel.p1.x + panel.p2.x) / 2, y: (panel.p1.y + panel.p2.y) / 2 };
+      const midTop = { x: (panel.r1.x + panel.r2.x) / 2, y: (panel.r1.y + panel.r2.y) / 2 };
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(midBottom.x, midBottom.y); ctx.lineTo(midTop.x, midTop.y); ctx.stroke();
       label(ctx, dev.id, dev.x - 6, dev.y - 6);
     }
   },
@@ -1358,6 +1364,32 @@ const DEVICE_DEFS = {
       drawIsoEllipse(cx, cy, 18, 10, '#2a2a2a', '#0d1117');
       drawIsoEllipse(cx, cy, safe ? 14 : 11, 12, safe ? '#ef5757' : '#7a1a1a', null);
       if (!safe) drawIsoEllipse(cx, cy, 16, 12, null, '#ffcc33');
+      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+    }
+  },
+
+  scanner: {
+    label: 'Лазерный сканер зоны', emoji: '📡', idPrefix: 'Scanner', w: 26, h: 26, radius: 60, interactive: 'toggle',
+    hint: 'Сканер безопасности (аналог SICK): следит за зоной вокруг себя. Тег = TRUE значит «зона свободна». Клик — смоделировать вторжение в зону (тег станет FALSE), клик ещё раз — зона снова чистая.',
+    tags(id) { return [{key:id, dir:'IN', default:true}]; },
+    makeState() { return {}; },
+    physics() {},
+    draw(ctx, dev) {
+      const cx = dev.x + 13, cy = dev.y + 13;
+      const clear = !!IO[dev.id];
+      const r = DEVICE_DEFS.scanner.radius;
+      // зона наблюдения на полу — предупреждающе-жёлтая пока чисто, красная
+      // заливка при «вторжении»
+      drawIsoEllipse(cx, cy, r, 0, clear ? 'rgba(255,167,51,0.06)' : 'rgba(239,87,87,0.22)', null);
+      ctx.setLineDash([5, 4]);
+      drawIsoEllipse(cx, cy, r, 0, null, clear ? 'rgba(255,167,51,0.35)' : '#ef5757');
+      ctx.setLineDash([]);
+      // столбик-корпус сканера
+      drawIsoBox(dev.x + 8, dev.y + 8, 10, 10, 34, {
+        top: '#2a323f', left: '#171d26', right: '#1e2530', edge: '#3a4656',
+      });
+      const blink = !clear && makeBlink(220);
+      drawIsoEllipse(cx, cy, 6, 37, clear ? '#ffa733' : (blink ? '#ff4d4d' : '#7a1a1a'), '#12161c');
       label(ctx, dev.id, dev.x - 6, dev.y - 6);
     }
   },
@@ -1883,9 +1915,10 @@ const SCENE_TEMPLATES = [
 
       // отдельно стоящие приборы безопасности/состояния — подключи их к
       // логике сам (авария должна глушить линию, светофор — сигналить режим)
-      addDevice('estop', 30, 270, 'EStop1');
-      addDevice('siren', 100, 270, 'Siren1');
-      addDevice('switch', 150, 270, 'EnableSwitch');
+      addDevice('estop', 20, 220, 'EStop1');
+      addDevice('scanner', 90, 220, 'Scanner1');
+      addDevice('siren', 20, 280, 'Siren1');
+      addDevice('switch', 90, 280, 'EnableSwitch');
       addDevice('trafficlight', 620, 30, 'StatusLight');
       addDevice('door', 620, 140, 'SafetyDoor');
     },
