@@ -1193,26 +1193,43 @@ const DEVICE_DEFS = {
     draw(ctx, dev) {
       const { w, h } = DEVICE_DEFS.door;
       const open = !!IO[`${dev.id}_Open`];
-      const maxElevation = 50, minPanel = 10;
+      const maxElevation = 50, minPanel = 10, jw = 6;
       const frac = dev.state.openFrac;
       // порог/рама всегда видны; полотно уезжает вверх при открытии, но
-      // никогда не схлопывается до нуля — у потолка всегда остаётся видимый
+      // никогда не схлопывается до нуля — у притолоки всегда остаётся видимый
       // «валик» съехавшей шторки, иначе дверь визуально пропадает совсем
       const baseLift = maxElevation * frac;
       const panelH = maxElevation * (1 - frac) + minPanel;
+
+      // порог
       drawIsoBox(dev.x, dev.y, w, h, 4, {
         top: '#232c3a', left: '#181e27', right: '#1e252f', edge: '#39465a',
       });
+      // косяки — боковые стойки проёма, статичная рама (не анимируются),
+      // именно они превращают «ящик» в узнаваемый дверной проём
+      const jambColors = { top: '#2a323f', left: '#171d26', right: '#1e2530', edge: '#3a4656' };
+      drawIsoBox(dev.x, dev.y - jw, w, jw, maxElevation + minPanel + 6, jambColors);
+      drawIsoBox(dev.x, dev.y + h, w, jw, maxElevation + minPanel + 6, jambColors);
+      // притолока (перемычка сверху, куда «прячется» полотно)
+      drawIsoBox(dev.x - 2, dev.y - jw, w + 4, h + 2 * jw, 6, {
+        top: '#12161c', left: '#0c0f13', right: '#10141a', edge: '#3a4656',
+      }, maxElevation + minPanel);
+
+      // полотно двери
       const panel = drawIsoBox(dev.x, dev.y, w, h, panelH, {
         top: open ? '#3a8a5f' : '#8a3a3a', left: open ? '#1e4d34' : '#4d1e1e',
         right: open ? '#2a6b48' : '#6b2a2a', edge: '#12161c',
       }, baseLift);
-      // шов между створками — чтобы силуэт однозначно читался как дверь
+      // шов между створками
       const midBottom = { x: (panel.p1.x + panel.p2.x) / 2, y: (panel.p1.y + panel.p2.y) / 2 };
       const midTop = { x: (panel.r1.x + panel.r2.x) / 2, y: (panel.r1.y + panel.r2.y) / 2 };
       ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(midBottom.x, midBottom.y); ctx.lineTo(midTop.x, midTop.y); ctx.stroke();
-      label(ctx, dev.id, dev.x - 6, dev.y - 6);
+      // ручка на видимой части полотна — последний штрих, чтобы точно не путать с ящиком
+      if (panelH > minPanel + 4) {
+        drawIsoEllipse(dev.x + w * 0.5, dev.y + h * 0.7, 2.5, baseLift + panelH * 0.4, '#12161c', '#3a4656');
+      }
+      label(ctx, dev.id, dev.x - 6, dev.y - 6 - jw);
     }
   },
 
