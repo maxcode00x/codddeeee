@@ -173,6 +173,21 @@
   }
   .palette button .emoji { font-size: 18px; }
 
+  /* готовые сцены (песочница) */
+  .template-list { display: flex; flex-direction: column; gap: 6px; }
+  .template-item {
+    display: block; width: 100%; text-align: left; padding: 8px 10px;
+    font-weight: 500;
+  }
+  .template-item .tpl-level {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: var(--accent);
+    font-weight: 700; display: block; margin-bottom: 2px;
+  }
+  .template-item .tpl-desc {
+    font-size: 11.5px; font-weight: 400; color: var(--muted); display: block;
+    margin-top: 2px; line-height: 1.4;
+  }
+
   /* task list (tutorial) */
   .tasklist { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .tasklist button { min-width: 34px; }
@@ -239,6 +254,9 @@
         <button id="btnLoad">📂 Загрузить</button>
         <button id="btnExportToggle" class="ghost">⇅ Экспорт / импорт</button>
       </div>
+
+      <h2 style="margin-top:10px">Готовые сцены</h2>
+      <div id="templateList" class="template-list"></div>
       <div id="exportArea">
         <textarea id="exportText" spellcheck="false"></textarea>
         <div class="controls">
@@ -643,6 +661,19 @@ function railEntryPoint(dev, w, h) {
   const c = railCenter(dev, w, h);
   const off = rotatePoint({ x: -w / 2, y: 0 }, angle);
   return { x: c.x + off.x, y: c.y + off.y, angle };
+}
+
+// сдвигает уже созданный (и, возможно, уже повёрнутый — dir выставляй до
+// вызова) прибор так, чтобы его вход оказался ровно в мировой точке target.
+// Используется при сборке готовых сцен (SCENE_TEMPLATES), чтобы стыковать
+// рельсовые приборы через настоящую геометрию движка, а не координаты на
+// глаз — ручная арифметика тут слишком легко промахивается мимо допуска
+// resolveExit (22px) на пару пикселей и стыковка молча не срабатывает.
+function alignEntryTo(dev, w, h, target) {
+  dev.x = 0; dev.y = 0;
+  const e = railEntryPoint(dev, w, h);
+  dev.x = Math.round(target.x - e.x);
+  dev.y = Math.round(target.y - e.y);
 }
 
 const DEVICE_DEFS = {
@@ -1639,6 +1670,171 @@ function hideCheckResult() {
   document.getElementById('checkResult').className = '';
 }
 
+/* ----------------------------------------------------------------------
+   ГОТОВЫЕ СЦЕНЫ (режим "Своя линия") — просто расставленные приборы без
+   стартового кода и без проверки (в отличие от TASKS): загружаются прямо
+   в песочницу, дальше пользователь сам пишет программу с нуля. Сложные
+   сцены собираются через alignEntryTo/railExitPoint/sideExitPoint по
+   настоящей геометрии движка, а не координатами "на глаз" — иначе стыковка
+   рельсовых приборов промахивается мимо допуска resolveExit на пару px.
+   ---------------------------------------------------------------------- */
+
+const SCENE_TEMPLATES = [
+  {
+    title: 'Мотор и кнопка',
+    level: 'Простое',
+    desc: 'Самая простая сцена, чтобы просто попробовать перо в руке — прямое включение двигателя кнопкой.',
+    build() {
+      addDevice('button', 80, 150, 'Button1');
+      addDevice('motor', 300, 150, 'Motor1');
+    },
+  },
+  {
+    title: 'Лазерные датчики',
+    level: 'Простое',
+    desc: 'Три датчика и лампа — потренируйся на И/ИЛИ/НЕ на настоящей раскладке, уже без подсказок и без проверки.',
+    build() {
+      addDevice('sensor', 150, 90, 'Sensor1');
+      addDevice('sensor', 350, 90, 'Sensor2');
+      addDevice('sensor', 550, 90, 'Sensor3');
+      addDevice('lamp', 550, 220, 'Lamp1');
+    },
+  },
+  {
+    title: 'Конвейер с воротами',
+    level: 'Средне',
+    desc: 'Деталь едет по конвейеру, датчик её ловит, дальше — твоя логика (например открыть ворота через паузу). Кнопки пуск/стоп уже на сцене.',
+    build() {
+      addDevice('button', 30, 260, 'ButtonStart');
+      addDevice('button', 120, 260, 'ButtonStop');
+      const c1 = addDevice('conveyor', 40, 150, 'Conveyor1');
+      const exit = railExitPoint(c1, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h);
+      addDevice('gate', Math.round(exit.x + 20), Math.round(exit.y - 45), 'Gate1');
+      addDevice('lamp', 700, 260, 'Lamp1');
+    },
+  },
+  {
+    title: 'Развилка на дивертор',
+    level: 'Средне',
+    desc: 'Конвейер подаёт детали на дивертор — по твоей команде он уводит их прямо или в сторону, на разные выходные конвейеры. Маршрутизацию пиши сам.',
+    build() {
+      // старт повыше — боковая ветка дивертора уходит вниз на всю длину
+      // конвейера (170px), а мир высотой всего 340px, разместить её ниже
+      // обычной центральной линии (y~150) уже некуда
+      const feed = addDevice('conveyor', 40, 40, 'Feed');
+      const feedExit = railExitPoint(feed, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h);
+      const div = addDevice('diverter', 0, 0, 'Diverter1');
+      alignEntryTo(div, DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h, feedExit);
+
+      const straight = railExitPoint(div, DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h);
+      const out1 = addDevice('conveyor', 0, 0, 'Straight');
+      alignEntryTo(out1, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h, straight);
+
+      const side = sideExitPoint(div, DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h);
+      const out2 = addDevice('conveyor', 0, 0, 'Side');
+      out2.state.dir = 1;
+      alignEntryTo(out2, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h, side);
+    },
+  },
+  {
+    title: 'Накопитель перед узким местом',
+    level: 'Продвинутое',
+    desc: 'Конвейер подаёт детали в накопитель — он копит их, пока следующий участок занят. Управляй мотором накопителя и выходными воротами сам.',
+    build() {
+      const feed = addDevice('conveyor', 40, 150, 'Feed');
+      const feedExit = railExitPoint(feed, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h);
+      const buf = addDevice('buffer', 0, 0, 'Buffer1');
+      alignEntryTo(buf, DEVICE_DEFS.buffer.w, DEVICE_DEFS.buffer.h, feedExit);
+      const bufExit = railExitPoint(buf, DEVICE_DEFS.buffer.w, DEVICE_DEFS.buffer.h);
+      addDevice('gate', Math.round(bufExit.x + 20), Math.round(bufExit.y - 45), 'Gate1');
+    },
+  },
+  {
+    title: 'Робот и палетайзер',
+    level: 'Продвинутое',
+    desc: 'Конвейер подаёт деталь роботу — по твоей команде он переносит её прямо на палетайзер, тот укладывает деталь в штабель.',
+    build() {
+      const feed = addDevice('conveyor', 40, 60, 'Feed');
+      const feedExit = railExitPoint(feed, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h);
+      const robot = addDevice('robot', 0, 0, 'Robot1');
+      alignEntryTo(robot, DEVICE_DEFS.robot.w, DEVICE_DEFS.robot.h, feedExit);
+
+      // палетайзер сразу под роботом — без промежуточного конвейера, чтобы
+      // хватило вертикального места (мир высотой всего 340px)
+      const side = sideExitPoint(robot, DEVICE_DEFS.robot.w, DEVICE_DEFS.robot.h);
+      const pal = addDevice('palletizer', 0, 0, 'Pal1');
+      pal.state.dir = 1;
+      alignEntryTo(pal, DEVICE_DEFS.palletizer.w, DEVICE_DEFS.palletizer.h, side);
+    },
+  },
+  {
+    title: 'Мини-завод',
+    level: 'Завод',
+    desc: 'Полноценная интегрированная линия — развилка, сортировка в брак, робот с палетайзером, плюс аварийная кнопка, сирена и светофор состояния на подхвате. Программу — пуск/стоп, маршрутизацию, безопасность — пишешь целиком сам.',
+    build() {
+      const feed = addDevice('conveyor', 20, 60, 'Feed');
+      const feedExit = railExitPoint(feed, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h);
+
+      const div = addDevice('diverter', 0, 0, 'Diverter1');
+      alignEntryTo(div, DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h, feedExit);
+      const divStraight = railExitPoint(div, DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h);
+      const divSide = sideExitPoint(div, DEVICE_DEFS.diverter.w, DEVICE_DEFS.diverter.h);
+
+      // прямая ветка — основной поток: робот забирает деталь и переносит на палетайзер
+      const robot = addDevice('robot', 0, 0, 'Robot1');
+      alignEntryTo(robot, DEVICE_DEFS.robot.w, DEVICE_DEFS.robot.h, divStraight);
+      const robSide = sideExitPoint(robot, DEVICE_DEFS.robot.w, DEVICE_DEFS.robot.h);
+
+      const pal = addDevice('palletizer', 0, 0, 'Palletizer1');
+      pal.state.dir = 1;
+      alignEntryTo(pal, DEVICE_DEFS.palletizer.w, DEVICE_DEFS.palletizer.h, robSide);
+
+      // боковая ветка дивертора — брак/особая обработка, ворота + датчик на конце
+      const reject = addDevice('conveyor', 0, 0, 'RejectLine');
+      reject.state.dir = 1;
+      alignEntryTo(reject, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h, divSide);
+      const rejectExit = railExitPoint(reject, DEVICE_DEFS.conveyor.w, DEVICE_DEFS.conveyor.h);
+      addDevice('gate', Math.round(rejectExit.x - 25), Math.round(rejectExit.y + 10), 'RejectGate');
+      addDevice('sensor', Math.round(rejectExit.x - 12), Math.round(rejectExit.y + 40), 'RejectSensor');
+
+      // отдельно стоящие приборы безопасности/состояния — подключи их к
+      // логике сам (авария должна глушить линию, светофор — сигналить режим)
+      addDevice('estop', 30, 270, 'EStop1');
+      addDevice('siren', 100, 270, 'Siren1');
+      addDevice('switch', 150, 270, 'EnableSwitch');
+      addDevice('trafficlight', 620, 30, 'StatusLight');
+      addDevice('door', 620, 140, 'SafetyDoor');
+    },
+  },
+];
+
+function loadTemplate(idx) {
+  if (world.mode !== 'sandbox') switchMode('sandbox');
+  clearDevices();
+  world.typeCounters = {};
+  SCENE_TEMPLATES[idx].build();
+  world.editMode = false;
+  world.selectedId = null;
+  world.placingType = null;
+  updateEditModeButton();
+  renderPalette();
+  codeEl.value = '// Своя программа для сцены «' + SCENE_TEMPLATES[idx].title + '»\n';
+  updateHighlight();
+  doCompileAndRun();
+  toast('Сцена загружена: ' + SCENE_TEMPLATES[idx].title);
+}
+
+function renderTemplateList() {
+  const el = document.getElementById('templateList');
+  el.innerHTML = SCENE_TEMPLATES.map((t, i) =>
+    `<button class="template-item" data-idx="${i}">` +
+      `<span class="tpl-level">${t.level}</span>${t.title}` +
+      `<span class="tpl-desc">${t.desc}</span>` +
+    `</button>`
+  ).join('');
+  el.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => loadTemplate(Number(b.dataset.idx))));
+}
+
 /* ---------------- режим "Своя линия" ---------------- */
 
 function initSandbox(fresh) {
@@ -2221,6 +2417,7 @@ function frame(ts) {
 renderPalette();
 updateEditModeButton();
 renderTaskList();
+renderTemplateList();
 loadTask(0);
 requestAnimationFrame(frame);
 </script>
