@@ -988,23 +988,50 @@ const DEVICE_DEFS = {
       const fp = DEVICE_DEFS.robot.footprint(dev);
       const st = dev.state;
       const busy = !!IO[`${dev.id}_Busy`];
+      const angle = dev.state.dir * Math.PI / 2;
+      const center = railCenter(dev, w, h);
+      const BASE_H = 10;
 
-      drawIsoBox(dev.x, dev.y, fp.w, fp.h, 10, {
+      drawIsoBox(dev.x, dev.y, fp.w, fp.h, BASE_H, {
         top: busy ? '#3a2a1c' : '#232c3a', left: '#10141b', right: '#191f29',
         edge: busy ? '#f0b429' : '#39465a',
       });
 
+      // «кисть» руки: во время переноса едет от входа к выходу по дуге
+      // подъёма, в покое просто нависает над входом, будто ждёт деталь —
+      // без этого робот выглядел как голая коробка без намёка на манипулятор
+      let handLocalX, handLocalY, lift;
       if (st.boxes.length > 0) {
-        const center = railCenter(dev, w, h);
-        const angle = dev.state.dir * Math.PI / 2;
         const frac = st.phase === 'moving' ? st.t / 1.0 : 0;
-        const localX = -w / 2 + (w / 2) * frac, localY = (h / 2) * frac;
-        const off = rotatePoint({ x: localX, y: localY }, angle);
-        const lift = Math.sin(Math.min(1, frac) * Math.PI) * 26; // дуга подъёма на середине переноса
+        handLocalX = -w / 2 + (w / 2) * frac;
+        handLocalY = (h / 2) * frac;
+        lift = Math.sin(Math.min(1, frac) * Math.PI) * 26;
+      } else {
+        handLocalX = -w / 2 + 6;
+        handLocalY = 0;
+        lift = 6;
+      }
+      const off = rotatePoint({ x: handLocalX, y: handLocalY }, angle);
+      const handWorld = { x: center.x + off.x, y: center.y + off.y };
+
+      const pivotScreen = worldToScreen(center.x, center.y);
+      const pivotY = pivotScreen.y - BASE_H - 6;
+      const handScreen = worldToScreen(handWorld.x, handWorld.y);
+      const handY = handScreen.y - (BASE_H + lift);
+
+      const armColor = busy ? '#f0b429' : '#5a6576';
+      ctx.strokeStyle = armColor;
+      ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(pivotScreen.x, pivotY); ctx.lineTo(handScreen.x, handY); ctx.stroke();
+      ctx.fillStyle = armColor;
+      ctx.beginPath(); ctx.arc(pivotScreen.x, pivotY, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(handScreen.x, handY, 4, 0, Math.PI * 2); ctx.fill();
+
+      if (st.boxes.length > 0) {
         const boxW = 24;
-        drawIsoBox(center.x + off.x - boxW / 2, center.y + off.y - boxW / 2, boxW, boxW, 14, {
+        drawIsoBox(handWorld.x - boxW / 2, handWorld.y - boxW / 2, boxW, boxW, 14, {
           top: '#f7c65b', left: '#8a5a00', right: '#c98f0a', edge: '#5c3d00',
-        }, 10 + lift);
+        }, BASE_H + lift);
       }
 
       label(ctx, dev.id, dev.x, dev.y - 6);
