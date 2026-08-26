@@ -585,6 +585,19 @@ function isoPoly(pts, fill, stroke) {
 function drawIsoBox(wx, wy, w, h, elevation, colors, baseLift) {
   baseLift = baseLift || 0; // на сколько экранных px приподнята сама подошва коробки
   // (нужно, чтобы ставить предметы НА крышу другого прибора — например, коробку на ленту)
+
+  // мягкая тень на полу — только у приборов, что реально стоят на земле
+  // (baseLift=0); у предметов, лежащих НА другом приборе (коробка на ленте,
+  // деталь в руке робота), своей тени на полу нет — она бы висела в воздухе
+  if (baseLift === 0) {
+    const sh0 = worldToScreen(wx + 5, wy + 5), sh1 = worldToScreen(wx + w + 5, wy + 5);
+    const sh2 = worldToScreen(wx + w + 5, wy + h + 5), sh3 = worldToScreen(wx + 5, wy + h + 5);
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    isoPoly([sh0, sh1, sh2, sh3], '#000000', null);
+    ctx.restore();
+  }
+
   const p0 = worldToScreen(wx, wy), p1 = worldToScreen(wx + w, wy);
   const p2 = worldToScreen(wx + w, wy + h), p3 = worldToScreen(wx, wy + h);
   const lift = (p, amount) => ({ x: p.x, y: p.y - amount });
@@ -613,12 +626,48 @@ function drawIsoRotatedQuad(cx, cy, localCorners, angle, elevation, fill, stroke
 // с той же вертикальной компрессией, что и у самой проекции. Не идеально
 // точная изометрическая окружность (та была бы повёрнутым эллипсом), но для
 // маленьких декоративных кружков разница на глаз не видна, а считать проще.
-function drawIsoEllipse(wx, wy, r, elevation, fill, stroke) {
+function drawIsoEllipse(wx, wy, r, elevation, fill, stroke, noShadow) {
+  // тень только у приподнятых круглых деталей (лампочка, кнопка, датчик...);
+  // плоские декали на уровне земли (например зона обнаружения датчика,
+  // elevation=0) её не получают — тень под плоским пятном на полу выглядит
+  // нелепо. Вызывающий может явно попросить пропустить (noShadow=true) —
+  // так делает зона датчика, которая рисуется дважды подряд (заливка+обводка)
+  // и не должна получать две наложенные тени.
+  if (elevation > 0 && !noShadow) {
+    const sp = worldToScreen(wx + 3, wy + 3);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.beginPath();
+    ctx.ellipse(sp.x, sp.y, r * ISO_SCALE, r * ISO_SCALE * 0.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+    ctx.restore();
+  }
   const p = worldToScreen(wx, wy);
   ctx.beginPath();
   ctx.ellipse(p.x, p.y - elevation, r * ISO_SCALE, r * ISO_SCALE * 0.5, 0, 0, Math.PI * 2);
   if (fill) { ctx.fillStyle = fill; ctx.fill(); }
   if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+}
+
+// бегущие полосы на ленте конвейера/дивертора/накопителя — единственная
+// «настоящая» движущаяся деталь ленты (раньше была таким же бегущим
+// штрихом в топ-даун виде, при переходе на изометрию потерялась — здесь
+// восстановлена через ту же rotatePoint-геометрию, что у зоны датчика).
+function drawBeltTreads(center, angle, w, h, elevation, running) {
+  const tick = running ? (performance.now() / 40) % 20 : 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1.25;
+  for (let tx = -w / 2 - tick; tx < w / 2; tx += 20) {
+    const a = rotatePoint({ x: tx, y: -h / 2 }, angle);
+    const b = rotatePoint({ x: tx, y: h / 2 }, angle);
+    const sa = worldToScreen(center.x + a.x, center.y + a.y);
+    const sb = worldToScreen(center.x + b.x, center.y + b.y);
+    ctx.beginPath();
+    ctx.moveTo(sa.x, sa.y - elevation);
+    ctx.lineTo(sb.x, sb.y - elevation);
+    ctx.stroke();
+  }
 }
 
 // поворот вращаемых приборов (конвейер, дивертор): 0=вправо,1=вниз,2=влево,3=вверх
@@ -746,6 +795,7 @@ const DEVICE_DEFS = {
       drawIsoBox(dev.x, dev.y, fp.w, fp.h, BELT_H, {
         top: '#232c3a', left: '#10141b', right: '#191f29', edge: '#39465a',
       });
+      drawBeltTreads(center, angle, w, h, BELT_H, motorOn);
 
       // зона датчика — подсвеченный участок у выхода ленты; углы считаем в
       // локальных координатах конвейера (0,0)=центр, ось X=направление хода)
@@ -835,6 +885,8 @@ const DEVICE_DEFS = {
         top: divert ? '#3a3016' : '#1c2430', left: '#10141b', right: '#191f29',
         edge: divert ? '#f0b429' : '#39465a',
       });
+      // у дивертора нет тега мотора — он всегда механически активен, лента едет постоянно
+      drawBeltTreads(center, angle, w, h, BELT_H, true);
 
       const boxW = 24;
       for (const bx of dev.state.boxes) {
@@ -914,11 +966,13 @@ const DEVICE_DEFS = {
       const angle = dev.state.dir * Math.PI / 2;
       const center = railCenter(dev, w, h);
       const full = !!IO[`${dev.id}_Full`];
+      const motorOn = !!IO[`${dev.id}_Motor`];
 
       drawIsoBox(dev.x, dev.y, fp.w, fp.h, BELT_H, {
         top: full ? '#3a2a1c' : '#232c3a', left: '#10141b', right: '#191f29',
         edge: full ? '#f0b429' : '#39465a',
       });
+      drawBeltTreads(center, angle, w, h, BELT_H, motorOn);
 
       const boxW = 24;
       for (const bx of dev.state.boxes) {
@@ -1200,14 +1254,17 @@ const DEVICE_DEFS = {
   switch: {
     label: 'Тумблер', emoji: '🎚', idPrefix: 'Switch', w: 40, h: 40, interactive: 'toggle',
     tags(id) { return [{key:id, dir:'IN'}]; },
-    makeState() { return {}; },
-    physics() {},
+    makeState() { return { knobFrac: 0 }; }, // 0 = влево (выкл), 1 = вправо (вкл) — плавный переход
+    physics(dev, dt) {
+      const target = IO[dev.id] ? 1 : 0;
+      dev.state.knobFrac += (target - dev.state.knobFrac) * Math.min(1, dt * 10);
+    },
     draw(ctx, dev) {
       const on = !!IO[dev.id];
       drawIsoBox(dev.x, dev.y + 10, 40, 20, 10, {
         top: '#232c3a', left: '#12161e', right: '#1a212c', edge: '#39465a',
       });
-      const knobWx = on ? dev.x + 30 : dev.x + 10, knobWy = dev.y + 20;
+      const knobWx = dev.x + 10 + dev.state.knobFrac * 20, knobWy = dev.y + 20;
       drawIsoEllipse(knobWx, knobWy, 8, 12, on ? '#4caf50' : '#8a94a6', '#12161c');
       label(ctx, dev.id, dev.x - 6, dev.y - 4);
     }
