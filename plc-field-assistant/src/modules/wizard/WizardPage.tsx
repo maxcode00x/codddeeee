@@ -62,7 +62,7 @@ export function WizardPage() {
               <button
                 key={b.id}
                 onClick={() => startBranch(b.id)}
-                className="min-h-14 rounded-lg border border-slate-300 px-4 text-left text-sm font-medium text-slate-700 hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="min-h-14 rounded-lg border border-slate-300 px-4 text-left text-sm font-medium text-slate-700 hover:border-green-400 hover:bg-green-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 {b.label}
               </button>
@@ -80,7 +80,7 @@ export function WizardPage() {
                   <button
                     key={o.label}
                     onClick={() => choose(o.label, o.next)}
-                    className="min-h-12 rounded-lg border border-slate-300 px-4 text-left text-sm font-medium text-slate-700 hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                    className="min-h-12 rounded-lg border border-slate-300 px-4 text-left text-sm font-medium text-slate-700 hover:border-green-400 hover:bg-green-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
                     {o.label}
                   </button>

@@ -58,7 +58,7 @@ function NavBar({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => voi
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `relative flex flex-none flex-col items-center justify-center gap-0.5 px-3 py-2 text-xs font-medium sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
       isActive
-        ? 'text-blue-600 dark:text-blue-400'
+        ? 'text-green-600 dark:text-green-400'
         : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
     }`;
 
@@ -79,7 +79,10 @@ function NavBar({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => voi
     <>
       {/* верхняя панель — заголовок + тема, видна всегда */}
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-        <span className="text-lg font-bold text-slate-900 dark:text-slate-100">🛠 Помощник наладчика</span>
+        <span className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
+          <img src="/logo-mark.png" alt="" className="h-7 w-7 rounded-md" />
+          Помощник наладчика
+        </span>
         <button
           onClick={() => setDark(!dark)}
           className="min-h-9 min-w-9 rounded-lg border border-slate-300 px-2 text-sm dark:border-slate-600"

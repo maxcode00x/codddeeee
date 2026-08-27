@@ -40,7 +40,7 @@ export function PunchListForm({ onDone }: { onDone: () => void }) {
           </Select>
         </Field>
         <Field label="Ответственный"><TextInput value={responsible} onChange={(e) => setResponsible(e.target.value)} /></Field>
-        <Field label="Срок"><input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" /></Field>
+        <Field label="Срок"><input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" /></Field>
       </div>
       <PrimaryButton onClick={save} disabled={!description.trim()}>Сохранить</PrimaryButton>
     </Card>

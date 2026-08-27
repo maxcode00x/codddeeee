@@ -20,7 +20,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 const controlClass =
-  'w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
+  'w-full min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100';
 
 export function NumberInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input type="number" inputMode="decimal" className={controlClass} {...props} />;
@@ -49,7 +49,7 @@ export function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElemen
   return (
     <button
       type="button"
-      className="min-h-11 rounded-lg bg-blue-600 px-4 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-40"
+      className="min-h-11 rounded-lg bg-green-600 px-4 text-base font-semibold text-white hover:bg-green-700 disabled:opacity-40"
       {...props}
     />
   );

@@ -61,7 +61,7 @@ export function EquipmentPage() {
         <Card title="Объекты">
           <button
             onClick={() => setSelectedObjectId(null)}
-            className={`mb-1 block w-full rounded-md px-2 py-1.5 text-left text-sm ${!selectedObjectId ? 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`}
+            className={`mb-1 block w-full rounded-md px-2 py-1.5 text-left text-sm ${!selectedObjectId ? 'bg-green-50 font-medium text-green-700 dark:bg-green-950 dark:text-green-300' : 'text-slate-600 dark:text-slate-300'}`}
           >
             Все объекты
           </button>
@@ -70,7 +70,7 @@ export function EquipmentPage() {
               key={n.object.id}
               onClick={() => setSelectedObjectId(n.object.id)}
               style={{ paddingLeft: `${8 + n.depth * 12}px` }}
-              className={`block w-full rounded-md py-1.5 pr-2 text-left text-sm ${selectedObjectId === n.object.id ? 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`}
+              className={`block w-full rounded-md py-1.5 pr-2 text-left text-sm ${selectedObjectId === n.object.id ? 'bg-green-50 font-medium text-green-700 dark:bg-green-950 dark:text-green-300' : 'text-slate-600 dark:text-slate-300'}`}
             >
               {n.object.name}
             </button>

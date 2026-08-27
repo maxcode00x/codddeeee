@@ -48,7 +48,7 @@ export function ReferencePage() {
       <div className="mx-auto max-w-4xl space-y-3 p-4">
         <button
           onClick={() => setSelected(null)}
-          className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+          className="text-sm font-medium text-green-600 hover:underline dark:text-green-400"
         >
           ← Ко всем томам
         </button>
@@ -78,7 +78,7 @@ export function ReferencePage() {
                 <li key={`${r.tomNumber}-${r.chapter.id}`}>
                   <button
                     onClick={() => setSelected(r)}
-                    className="w-full py-2 text-left hover:text-blue-600 dark:hover:text-blue-400"
+                    className="w-full py-2 text-left hover:text-green-600 dark:hover:text-green-400"
                   >
                     <span className="text-xs text-slate-400">Том {r.tomNumber} · {r.chapter.dataN}</span>
                     <br />

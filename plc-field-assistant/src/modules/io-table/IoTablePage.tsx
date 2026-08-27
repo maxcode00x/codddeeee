@@ -24,7 +24,7 @@ function ProgressBar({ points }: { points: IoPoint[] }) {
         <span>{pct}%</span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-        <div className="h-full bg-blue-600" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-green-600" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
