@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import db from './db/schema';
 import { CalculatorsPage } from './modules/calculators/CalculatorsPage';
@@ -12,10 +12,13 @@ import { ProjectVersionsPage } from './modules/versions/ProjectVersionsPage';
 import { WizardPage } from './modules/wizard/WizardPage';
 import { StatisticsPage } from './modules/statistics/StatisticsPage';
 import { TrainerPage } from './modules/trainer/TrainerPage';
+import { DashboardPage } from './modules/dashboard/DashboardPage';
+import logoMark from './assets/logo-mark.png';
 
 const PHONE_MODE = import.meta.env.VITE_APP_TARGET === 'phone';
 
 const FULL_NAV_ITEMS = [
+  { to: '/dashboard', label: 'Главная', emoji: '🏠' },
   { to: '/trainer', label: 'Тренажёр', emoji: '🎮' },
   { to: '/', label: 'Журнал', emoji: '🛠' },
   { to: '/io', label: 'I/O', emoji: '🔌' },
@@ -80,7 +83,7 @@ function NavBar({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => voi
       {/* верхняя панель — заголовок + тема, видна всегда */}
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
         <span className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
-          <img src="/logo-mark.png" alt="" className="h-7 w-7 rounded-md" />
+          <img src={logoMark} alt="" className="h-7 w-7 rounded-md" />
           Помощник наладчика
         </span>
         <button
@@ -112,6 +115,7 @@ function AppRoutes() {
   return (
     <main className={`flex-1 ${isTrainer ? 'overflow-hidden' : 'overflow-y-auto pb-16 sm:pb-0'}`}>
       <Routes>
+        {!PHONE_MODE && <Route path="/dashboard" element={<DashboardPage />} />}
         {!PHONE_MODE && <Route path="/trainer" element={<TrainerPage />} />}
         <Route path="/" element={<FaultLogPage />} />
         <Route path="/calc" element={<CalculatorsPage />} />
@@ -131,12 +135,22 @@ function AppRoutes() {
   );
 }
 
+// клики по пунктам трея приходят сюда через preload (см. electron/main.js
+// createTray) — без этого моста трей мог бы только показать/спрятать окно,
+// но не перевести его на нужный раздел
+function ElectronNavigateBridge() {
+  const navigate = useNavigate();
+  useEffect(() => window.electronAPI?.onNavigate((hash) => navigate(hash)), [navigate]);
+  return null;
+}
+
 function App() {
   const [dark, setDark] = useTheme();
 
   return (
     <HashRouter>
       <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
+        <ElectronNavigateBridge />
         <NavBar dark={dark} setDark={setDark} />
         <AppRoutes />
       </div>

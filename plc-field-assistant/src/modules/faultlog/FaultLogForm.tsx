@@ -38,6 +38,7 @@ export function FaultLogForm({ onDone }: { onDone: () => void }) {
       createdAt: Date.now(),
     };
     await db.faultLogs.add(record);
+    window.electronAPI?.notify('Журнал обновлён', `Новая запись: ${record.symptom}`);
     onDone();
   }
 

@@ -32,6 +32,10 @@ export interface ElectronCodesysAPI {
 
 declare global {
   interface Window {
-    electronAPI?: { codesys: ElectronCodesysAPI };
+    electronAPI?: {
+      codesys: ElectronCodesysAPI;
+      notify(title: string, body: string): Promise<void>;
+      onNavigate(cb: (hash: string) => void): () => void;
+    };
   }
 }

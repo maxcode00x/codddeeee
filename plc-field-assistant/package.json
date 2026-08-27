@@ -3,7 +3,7 @@
   "description": "Офлайн-помощник наладчика ПЛК: тренажёр, журнал неисправностей, таблица I/O, калькуляторы, справочник",
   "author": "PLC Field Assistant",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -70,7 +70,9 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp"
     }
   }
 }
